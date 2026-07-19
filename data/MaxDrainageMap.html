@@ -562,7 +562,6 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="hmenu-lbl" id="landCoverLbl" style="display:none">Land cover source</div>
         <select id="landCoverSrc" title="Land cover source for LAND USE table" style="display:none;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;padding:5px 7px;border-radius:4px;cursor:pointer;">
           <option value="olc">OLC V1 (2020)</option>
-          <option value="solris" disabled title="SOLRIS live service was removed by MNRF/LIO — no longer available">SOLRIS (unavailable — service removed)</option>
         </select>
       </div>
     </div>
@@ -1497,22 +1496,6 @@ const AG_LAYERS=[
       {color:'#cdaa66',label:'Cropland'},{color:'#cd8966',label:'Hay-pasture'},{color:'#000000',label:'Transportation'},
       {color:'#ff0000',label:'Unclassified'},
     ]},
-  {id:'solris',    name:'SOLRIS 3.0 (unavailable)',icon:'🌲',desc:'A more detailed land cover classification (forest, wetland, agriculture, urban, and finer sub-categories) purpose-built for Southern Ontario. UNAVAILABLE as of 2026-07-19 — MNRF/LIO removed the live web service entirely (confirmed: it no longer appears in the server\'s own folder listing). SOLRIS 3.0 was only ever published as a downloadable file, never as a live map service. Toggle disabled below; legend kept for reference only.',color:'#2d8a4e',layerIds:[],svcUrl:'solris',minZoom:8,opacity:.7,broken:true,
-    source:'Southern Ontario Land Resource Information System (SOLRIS) 3.0, MNRF — download-only, no live service exists. Confirmed removed from the ws.geoservices.lrc.gov.on.ca/arcgis5 server directory on 2026-07-19 (the old v2 service this app used to call is simply gone).',
-    sourceUrl:'https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/SOLRIS_Version_3_0.zip',
-    infoUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/SOLRIS%20v3.0%20-%20Data%20Specifications.pdf',
-    legend:[
-      {color:'#004da8',label:'Open Water'},{color:'#73b2ff',label:'Open Shoreline'},{color:'#bee8ff',label:'Tilled / Mudflat'},
-      {color:'#008a8a',label:'Open Bog'},{color:'#00a884',label:'Open Fen'},{color:'#4cb09e',label:'Marsh'},
-      {color:'#7ab6f5',label:'Open Aquatic'},{color:'#55ff00',label:'Tallgrass Prairie'},{color:'#aaff00',label:'Tallgrass Savannah'},
-      {color:'#cdf57a',label:'Open Tallgrass'},{color:'#267300',label:'Forest'},{color:'#38a800',label:'Coniferous Forest'},
-      {color:'#5a8c1e',label:'Mixed Forest'},{color:'#73b237',label:'Deciduous Forest'},{color:'#006446',label:'Treed Bog'},
-      {color:'#00785a',label:'Treed Fen'},{color:'#288264',label:'Swamp'},{color:'#89cd66',label:'Treed Sand Barren'},
-      {color:'#a8a800',label:'Plantations - Tree Cultivated'},{color:'#ffff73',label:'Tilled / Agriculture'},{color:'#e6e600',label:'Cropland'},
-      {color:'#ffaa00',label:'Hedge Rows'},{color:'#cdaa66',label:'Sand Barren / Dune'},{color:'#b2b2b2',label:'Bedrock / Cliff / Talus'},
-      {color:'#9c9c9c',label:'Transportation'},{color:'#ff0000',label:'Built-up Impervious'},{color:'#ffbebe',label:'Built-up Pervious'},
-      {color:'#828282',label:'Extraction - Aggregate'},{color:'#734c00',label:'Undifferentiated'},
-    ]},
   {id:'aafc_crop',  name:'AAFC Crop Inventory 2024',  icon:'🌾',desc:'Which specific crop was growing in each field in 2024 (corn, soy, wheat, hay, pasture, etc.), derived from satellite imagery — useful for confirming current land use vs. the static land-cover layers above.',color:'#22c55e',layerIds:[],svcUrl:null,minZoom:8,opacity:.75,
     source:'Annual Crop Inventory 2024, Agriculture and Agri-Food Canada (AAFC). No token needed.',
     sourceUrl:'https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/2024/ImageServer',
@@ -1788,46 +1771,6 @@ function toggleAgLayer(id,enabled){
       olcLayer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
       olcLayer.addTo(map);
       agLayerInstances[id]=olcLayer;
-      return;
-    }
-    if(id==='solris'){
-      // CONFIRMED: no CORS headers → useCors:false. OLCC is a categorical mosaic that
-      // needs a mosaic+colormap rule, AND this service is token-gated — pass the same
-      // AgMaps/LIO token the rest of the map uses.
-      const statusEl2=document.getElementById('ag-status-solris');
-      const solrisToken=getLioToken();
-      const baseOpts={
-        url:'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Thematic/Ontario_Land_Cover_Compilation_v2/ImageServer',
-        opacity:layerDef.opacity||0.7,
-        f:'image',format:'png32',
-        useCors:false,
-      };
-      if(solrisToken) baseOpts.token=solrisToken;
-
-      const solrisLayer=L.esri.imageMapLayer(Object.assign({},baseOpts,{
-        renderingRule:{ rasterFunction:'Colormap' },
-        mosaicRule:{ mosaicMethod:'esriMosaicNorthwest', ascending:true },
-      }));
-      solrisLayer.on('load',()=>{ if(statusEl2){statusEl2.className='ag-layer-status on';statusEl2.textContent='ON';} });
-      let retried=false;
-      solrisLayer.on('requesterror',()=>{
-        if(statusEl2){statusEl2.className='ag-layer-status err';statusEl2.textContent='ERR';}
-        if(retried) return; retried=true;
-        // Fallback: drop the rendering/mosaic rules and try plain export once (still with token)
-        console.warn('SOLRIS: rule-based export failed, retrying plain export');
-        map.removeLayer(solrisLayer);
-        const plain=L.esri.imageMapLayer(baseOpts);
-        plain.on('load',()=>{ if(statusEl2){statusEl2.className='ag-layer-status on';statusEl2.textContent='ON';} });
-        plain.on('requesterror',()=>{
-          if(statusEl2){statusEl2.className='ag-layer-status err';statusEl2.textContent='ERR';}
-          showToast(solrisToken ? '⚠ SOLRIS still failing — token may be expired'
-                                : '⚠ SOLRIS needs a token — paste your AgMaps token first');
-        });
-        plain.addTo(map);
-        agLayerInstances[id]=plain;
-      });
-      solrisLayer.addTo(map);
-      agLayerInstances[id]=solrisLayer;
       return;
     }
     if(id==='dtm_lidar'){
@@ -4485,51 +4428,15 @@ const OLC_FALLBACK={
   10:'Built-up Impervious',11:'Built-up Pervious',12:'Exposed/Barren',13:'Disturbance',
 };
 
-// ── SOLRIS / Land Cover Compilation v2 ──
-const SOLRIS_URL='https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Thematic/Ontario_Land_Cover_Compilation_v2/ImageServer';
-// SOLRIS standard palette — [R,G,B, swmhymoLU, label]
-// Approximate MNRF SOLRIS colours; refined from service legend at runtime
-const SOLRIS_PALETTE=[
-  [0,77,168,     'Water',         'Open Water'],
-  [115,178,255,  'Water',         'Open Shoreline'],
-  [190,232,255,  'Water',         'Tilled / Mudflat'],
-  [0,138,138,    'Water',         'Open Bog'],
-  [0,168,132,    'Water',         'Open Fen'],
-  [76,176,158,   'Water',         'Marsh'],
-  [122,182,245,  'Water',         'Open Aquatic'],
-  [85,255,0,     'Meadow/Field',  'Tallgrass Prairie'],
-  [170,255,0,    'Meadow/Field',  'Tallgrass Savannah'],
-  [205,245,122,  'Meadow/Field',  'Open Tallgrass'],
-  [38,115,0,     'Forest/Woodlot','Forest'],
-  [56,168,0,     'Forest/Woodlot','Coniferous Forest'],
-  [90,140,30,    'Forest/Woodlot','Mixed Forest'],
-  [115,178,55,   'Forest/Woodlot','Deciduous Forest'],
-  [0,100,70,     'Forest/Woodlot','Treed Bog'],
-  [0,120,90,     'Forest/Woodlot','Treed Fen'],
-  [40,130,100,   'Forest/Woodlot','Swamp'],
-  [137,205,102,  'Forest/Woodlot','Treed Sand Barren'],
-  [168,168,0,    'Forest/Woodlot','Plantations - Tree Cultivated'],
-  [255,255,115,  'Crop',          'Tilled / Agriculture'],
-  [230,230,0,    'Crop',          'Cropland'],
-  [255,170,0,    'Meadow/Field',  'Hedge Rows'],
-  [205,170,102,  'Lawn/Grass',    'Sand Barren / Dune'],
-  [178,178,178,  'Lawn/Grass',    'Bedrock / Cliff / Talus'],
-  [156,156,156,  'Pavement',      'Transportation'],
-  [255,0,0,      'Pavement',      'Built-up Impervious'],
-  [255,190,190,  'Lawn/Grass',    'Built-up Pervious'],
-  [130,130,130,  'Pavement',      'Extraction - Aggregate'],
-  [115,76,0,     'Lawn/Grass',    'Undifferentiated'],
-];
 
 async function querySWMHYMO(){
   if(!loadedBoundaryPoly){showToast('LOAD A BOUNDARY FIRST');return;}
   const token=getLioToken();
   if(!token){showToast('PASTE AGMAPS TOKEN FIRST');return;}
 
-  // ── Land cover source selection ──
-  const srcSel=(document.getElementById('landCoverSrc')||{}).value||'olc';
-  const SRC_URL   = srcSel==='solris' ? SOLRIS_URL : OLC_URL;
-  const SRC_LABEL = srcSel==='solris' ? 'SOLRIS v2' : 'OLC V1 2020';
+  // ── Land cover source (SOLRIS removed 2026-07-19 — MNRF took the live service down) ──
+  const SRC_URL   = OLC_URL;
+  const SRC_LABEL = 'OLC V1 2020';
   progressStart('Land use areas — '+SRC_LABEL);
   progressSet(5,'Preparing…');
 
@@ -4552,11 +4459,9 @@ async function querySWMHYMO(){
       hsgRingMap.push({cls,ring:rings[0]});
     });
 
-    // ── Step 2: Build colour palette for the chosen source ──
+    // ── Step 2: Build colour palette for OLC V1 ──
     // [R, G, B, swmhymoLU, label] — refined from service legend below
-    const PALETTE = srcSel==='solris'
-      ? SOLRIS_PALETTE.map(e=>[...e])
-      : [
+    const PALETTE = [
       [210,185,158,'Meadow/Field','Prairie'],
       [168,168,56, 'Meadow/Field','Savannah'],
       [204,153,204,'Lawn/Grass',  'Alvar'],
