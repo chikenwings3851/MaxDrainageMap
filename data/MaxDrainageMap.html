@@ -78,8 +78,8 @@ header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(0,229,255,.05);}
 .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
 .upload-icon{font-size:24px;margin-bottom:4px;display:block;}
-.upload-zone p{font-size:14px;color:#C8DDF0;line-height:1.5;}
-.upload-zone strong{color:#FFFFFF;font-weight:600;}
+.upload-zone p{font-size:14px;color:var(--text);opacity:.85;line-height:1.5;}
+.upload-zone strong{color:var(--text);font-weight:600;}
 .section-title{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--muted);padding:7px 11px 4px;border-top:1px solid var(--border);text-transform:uppercase;margin-top:8px;flex-shrink:0;}
 .photo-list{flex:1;overflow-y:auto;padding:4px 6px;}
 .photo-list::-webkit-scrollbar{width:3px;}
@@ -114,7 +114,7 @@ header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1
 .draw-hint-cancel:hover{background:rgba(255,214,0,.15);}
 
 /* RESULTS PANEL */
-.results-panel{background:var(--panel);border-top:2px solid var(--accent);flex-shrink:0;display:none;flex-direction:column;height:280px;min-height:120px;max-height:90vh;z-index:600;position:relative;}
+.results-panel{background:var(--panel);border-top:2px solid var(--accent);display:none;flex-direction:column;height:280px;min-height:120px;max-height:90vh;z-index:900;position:fixed;left:0;right:0;bottom:0;box-shadow:0 -6px 24px rgba(0,0,0,.35);}
 .results-panel.show{display:flex;}
 .results-resize-handle{position:absolute;top:-4px;left:0;right:0;height:10px;cursor:ns-resize;z-index:610;display:flex;align-items:center;justify-content:center;}
 .results-resize-handle::before{content:'';width:48px;height:4px;border-radius:2px;background:var(--accent);opacity:.5;transition:opacity .15s;}
@@ -188,7 +188,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .sval{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--accent);width:32px;text-align:right;flex-shrink:0;}
 .color-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
 .cdot{width:19px;height:19px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;}
-.cdot.active{border-color:white;transform:scale(1.2);box-shadow:0 0 5px rgba(255,255,255,.4);}
+.cdot.active{border-color:var(--text);transform:scale(1.2);box-shadow:0 0 5px rgba(0,0,0,.25);}
 
 /* AG LAYER ITEMS */
 .ag-layer-item{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:7px 9px;margin-bottom:5px;transition:border-color .15s;}
@@ -1762,9 +1762,9 @@ function buildAgLayerUI(){
           </div>`).join('')}
         </div>`:''}
         <div class="ag-source">${l.source?escHtml(l.source):`Layer ${l.layerIds.join('+')} · ${l.svcUrl?'Assessment_Parcel_Map':'AIA_Map'}`}
-          <div style="display:flex;gap:10px;margin-top:4px;">
-            ${l.infoUrl?`<a href="${escHtml(l.infoUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--green)">📖 plain-English page</a>`:''}
-            ${l.sourceUrl?`<a href="${escHtml(l.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--muted)">🔗 raw data/technical</a>`:''}
+          <div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;align-items:flex-start;">
+            ${l.infoUrl?`<a href="${escHtml(l.infoUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--green);white-space:nowrap;">📖 plain-English page</a>`:''}
+            ${l.sourceUrl?`<a href="${escHtml(l.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--muted);white-space:nowrap;">🔗 raw data/technical</a>`:''}
           </div>
         </div>
       </div>
@@ -6284,6 +6284,30 @@ if(isMobile){
   document.getElementById('btnPhotos')?.classList.remove('active');
   document.getElementById('btnSettings')?.classList.remove('active');
 }
+
+// Desktop/mobile panel layout is only computed once above, at whatever size the
+// window happened to be at load. If the window is later resized narrower (easy to
+// do now that this runs in a resizable Electron window, not just a fixed phone
+// screen), the two side panels both switch to overlay-drawer CSS without either
+// one auto-collapsing — so they land on top of each other. Catch that one
+// crossing (wide → narrow) and collapse both, same as the initial-load logic above.
+let _wasMobileWidth=isMobile;
+let _resizeDebounce=null;
+window.addEventListener('resize',()=>{
+  clearTimeout(_resizeDebounce);
+  _resizeDebounce=setTimeout(()=>{
+    const nowMobile=window.matchMedia('(max-width:768px)').matches;
+    if(nowMobile&&!_wasMobileWidth){
+      panelState.photos=false; panelState.settings=false;
+      document.getElementById('sidebarPhotos').classList.add('collapsed');
+      document.getElementById('settingsPanel').classList.add('collapsed');
+      document.getElementById('btnPhotos')?.classList.remove('active');
+      document.getElementById('btnSettings')?.classList.remove('active');
+      map.invalidateSize();
+    }
+    _wasMobileWidth=nowMobile;
+  },150);
+});
 // Enable ASR parcel layer by default once map is ready
 map.whenReady(()=>{
   setTimeout(()=>{
