@@ -1482,7 +1482,20 @@ const AG_LAYERS=[
     {color:'#ef4444',label:'D — Very slow infiltration (high runoff). High water table, clay, or shallow to impervious material.'},
     {color:'#a78bfa',label:'W — Water'},
   ]},
-  {id:'dfo_drain',  name:'DFO Drain Classification',  icon:'🐟',desc:'Fisheries and Oceans Canada\'s sensitivity rating for fish habitat in a drain, under the federal Fisheries Act — determines what level of review (if any) drain maintenance work needs.', color:'#ff4499',layerIds:[7],  svcUrl:OPEN01_URL,        minZoom:10,opacity:.7,
+  {id:'soil_erodibility', name:'Soil Erodibility (K-factor)', icon:'🌪️',desc:'Universal Soil Loss Equation K-factor for each soil — how easily it erodes under rainfall/runoff. Relevant for erosion and sediment control planning on and around drain work, not the drain design itself.', color:'#c2410c',layerIds:[],svcUrl:SOIL_SURVEY_URL,minZoom:9,opacity:.6,
+    source:'OMAFRA Soil Survey Complex (K_FACTOR1 field) via LIO Open Data, verified 2026-07-19 against the official LIO data dictionary. Real Ontario-wide range confirmed live: 0.001–0.075 (t·ha·h/(ha·MJ·mm)), average ~0.03, across ~117,500 rated soil polygons — the break points below are set against that actual range, not a generic textbook scale. Data last updated 2025-12-11 (per GeoHub item record).',
+    lastUpdated:'2025-12-11',
+    sourceUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/Soil%20Survey%20Complex%20-%20Data%20Description.pdf',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::soil-survey-complex/about',
+    legend:[
+      {color:'#1a9850',label:'< 0.02 — Low erodibility'},
+      {color:'#a6d96a',label:'0.02–0.035 — Moderate'},
+      {color:'#fee08b',label:'0.035–0.05 — Moderately High'},
+      {color:'#fb923c',label:'0.05–0.065 — High'},
+      {color:'#d73027',label:'> 0.065 — Very High'},
+      {color:'#999999',label:'Not rated (urban/water/organic)'},
+    ]},
+  {id:'dfo_drain', name:'DFO Drain Classification',  icon:'🐟',desc:'Fisheries and Oceans Canada\'s sensitivity rating for fish habitat in a drain, under the federal Fisheries Act — determines what level of review (if any) drain maintenance work needs.', color:'#ff4499',layerIds:[7],  svcUrl:OPEN01_URL,        minZoom:10,opacity:.7,
     source:'Land Information Ontario (LIO) Open Data — "Constructed Drain" (DFO_CLASS field), verified 2026-07-19. General framework confirmed against DFO\'s public Guidance Document for Maintaining and Repairing Municipal Drains; exact A/B vs E1/E2 boundary not independently re-verified here — treat borderline cases as needing a DFO/Conservation Authority check regardless of what this layer shows. Data last updated 2026-06-19 (per GeoHub item record).',
     lastUpdated:'2026-06-19',
     sourceUrl:OPEN01_URL+'/7',
@@ -1992,6 +2005,27 @@ function toggleAgLayer(id,enabled){
         url:SOIL_SURVEY_URL, simplifyFactor:0.4, precision:5,
         style:f=>{const k=hsgKey(f.properties||{});return{color:'#555',weight:0.5,opacity:0.6,fillColor:HSG_COLORS[k]||'#9ca3af',fillOpacity:layerDef.opacity||0.65};},
         onEachFeature:(f,layer)=>{const a=f.properties||{};if(a.SOIL_NAME1)layer.bindTooltip(`${a.SOIL_NAME1} — HSG ${hsgKey(a)}`,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='soil_erodibility'){
+      // K_FACTOR1 uses -9 as a null/not-applicable sentinel (per the LIO data dictionary) — never a real value.
+      const kColor=k=>{
+        if(k==null||k<=0) return '#999999';
+        if(k<0.02) return '#1a9850';
+        if(k<0.035) return '#a6d96a';
+        if(k<0.05) return '#fee08b';
+        if(k<0.065) return '#fb923c';
+        return '#d73027';
+      };
+      const fl=L.esri.featureLayer({
+        url:SOIL_SURVEY_URL, simplifyFactor:0.4, precision:5,
+        style:f=>{const k=f.properties?.K_FACTOR1;return{color:'#555',weight:0.5,opacity:0.6,fillColor:kColor(k),fillOpacity:layerDef.opacity||0.6};},
+        onEachFeature:(f,layer)=>{const a=f.properties||{};const k=a.K_FACTOR1;if(a.SOIL_NAME1)layer.bindTooltip(`${a.SOIL_NAME1} — K=${(k==null||k<=0)?'not rated':k}`,{sticky:true,className:'ws-tooltip'});},
       });
       fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
       fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
