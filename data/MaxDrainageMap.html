@@ -1041,6 +1041,12 @@ const MUNICIPAL_URL  = 'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/servic
 const LOT_FABRIC_URL = 'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open06/MapServer/2';
 const PARCEL_URL = 'https://ws.lioservices.lrc.gov.on.ca/arcgis4/rest/services/AIA/Assessment_Parcel_Map/MapServer';
 
+// Open-data (no token) sources — verified 2026-07-19 against the live LIO_OPEN_DATA
+// service directory. Migrated off the token-gated AIA_Map layers 20/39/15/27/28/29.
+const OPEN01_URL = 'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer'; // Constructed Drain (7, incl. DFO_CLASS field), Tile Drainage Area (11)
+const OPEN03_URL = 'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open03/MapServer'; // Conservation Authority Admin Area (11)
+const SOIL_SURVEY_URL = 'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open05/MapServer/9'; // Soil Survey Complex (featureLayer, needs its own sublayer index) — CLASS1 (capability), DRAINAGE1 (drainage class), HYDRO1/2 (HSG)
+
 // ── Custom parcel source override ──
 let customParcelUrl='';
 let customParcelRollField='ASSESSMENT_ROLL_NUMBER';
@@ -1371,17 +1377,17 @@ function toggleCustomParcelLayer(enabled){
 
 const AG_LAYERS=[
   {id:'lots',       name:'Lots & Concessions',       icon:'📐',desc:'Ontario survey lot & concession fabric',     color:'#ffd600',layerIds:[1,2], svcUrl:null,        minZoom:11,opacity:.7},
-  {id:'drains',     name:'Municipal Drains',          icon:'💧',desc:'OMAFRA constructed drain network',          color:'#00bfff',layerIds:[20],  svcUrl:null,        minZoom:9, opacity:.85},
-  {id:'tile_drain', name:'Tile Drainage',             icon:'🔵',desc:'Agricultural tile drainage areas',          color:'#4488ff',layerIds:[21],  svcUrl:null,        minZoom:10,opacity:.6},
-  {id:'controlled', name:'Controlled Drainage',       icon:'🔶',desc:'Controlled drainage structures',            color:'#ff9900',layerIds:[22],  svcUrl:null,        minZoom:10,opacity:.7},
+  {id:'drains',     name:'Municipal Drains',          icon:'💧',desc:'Constructed municipal drains. Source: LIO Open Data. No token needed.', color:'#00bfff',layerIds:[7],  svcUrl:OPEN01_URL,  minZoom:9, opacity:.85},
+  {id:'tile_drain', name:'Tile Drainage',             icon:'🔵',desc:'Agricultural tile drainage areas. Source: LIO Open Data. No token needed.', color:'#4488ff',layerIds:[11],  svcUrl:OPEN01_URL, minZoom:10,opacity:.6},
+  {id:'controlled', name:'Controlled Drainage',       icon:'🔶',desc:'Controlled drainage structures — requires token (no live open-data equivalent found; only a static download package exists)', color:'#ff9900',layerIds:[22],  svcUrl:null,        minZoom:10,opacity:.7},
   {id:'asr_parcels', name:'Assessment Parcels (ARN)',     icon:'📋',desc:'All assessment parcels — requires token',   color:'#00e5ff',layerIds:[0],   svcUrl:PARCEL_URL,  minZoom:12,opacity:.55,requiresToken:true},
   {id:'roll_labels', name:'Roll Number Labels',          icon:'🏷️',desc:'ARN text labels on parcels — requires token', color:'#ffd600',layerIds:[0],   svcUrl:PARCEL_URL,  minZoom:14,opacity:1,  requiresToken:true,isLabelLayer:true},
   {id:'townships',  name:'Geographic Townships',      icon:'🗂', desc:'Ontario geographic township boundaries',    color:'#ff6b35',layerIds:[1],   svcUrl:null,        minZoom:7, opacity:.65},
   {id:'municipal',  name:'Municipal Boundaries',      icon:'🏛', desc:'Lower/single tier municipality boundaries', color:'#c850ff',layerIds:[10],  svcUrl:null,        minZoom:7, opacity:.6},
-  {id:'conservation',name:'Conservation Authorities', icon:'🌲',desc:'Conservation authority area boundaries',    color:'#39ff14',layerIds:[15],  svcUrl:null,        minZoom:6, opacity:.5},
-  {id:'soil_cap',   name:'Soil Capability',           icon:'🌱',desc:'Agricultural soil capability class',        color:'#88cc44',layerIds:[29],  svcUrl:null,        minZoom:9, opacity:.6},
-  {id:'soil_drain', name:'Soil Drainage Class',       icon:'🟡',desc:'Hydrologic soil drainage class',            color:'#ffdd00',layerIds:[28],  svcUrl:null,        minZoom:9, opacity:.6},
-  {id:'hsg',        name:'Hydrologic Soil Group',     icon:'💧',desc:'HSG A/B/C/D — runoff potential by infiltration rate. Source: OMAFRA Soil Survey Complex.',color:'#38bdf8',layerIds:[27],svcUrl:null,minZoom:9,opacity:.65,legend:[
+  {id:'conservation',name:'Conservation Authorities', icon:'🌲',desc:'Conservation authority admin areas. Source: LIO Open Data. No token needed.', color:'#39ff14',layerIds:[11],  svcUrl:OPEN03_URL,  minZoom:6, opacity:.5},
+  {id:'soil_cap',   name:'Soil Capability',           icon:'🌱',desc:'Agricultural soil capability class (CLASS1). Source: OMAFRA Soil Survey Complex, LIO Open Data. No token needed.', color:'#88cc44',layerIds:[],  svcUrl:SOIL_SURVEY_URL,        minZoom:9, opacity:.6},
+  {id:'soil_drain', name:'Soil Drainage Class',       icon:'🟡',desc:'Soil drainage class (DRAINAGE1). Source: OMAFRA Soil Survey Complex, LIO Open Data. No token needed.', color:'#ffdd00',layerIds:[],  svcUrl:SOIL_SURVEY_URL,        minZoom:9, opacity:.6},
+  {id:'hsg',        name:'Hydrologic Soil Group',     icon:'💧',desc:'HSG A/B/C/D — runoff potential by infiltration rate. Source: OMAFRA Soil Survey Complex, LIO Open Data. No token needed.',color:'#38bdf8',layerIds:[],svcUrl:SOIL_SURVEY_URL,minZoom:9,opacity:.65,legend:[
     {color:'#22c55e',label:'A — High infiltration, low runoff'},
     {color:'#86efac',label:'A/B'},
     {color:'#60a5fa',label:'B — Moderate infiltration'},
@@ -1391,7 +1397,7 @@ const AG_LAYERS=[
     {color:'#ef4444',label:'D — Very slow, high runoff'},
     {color:'#a78bfa',label:'W — Water'},
   ]},
-  {id:'dfo_drain',  name:'DFO Drain Classification',  icon:'🐟',desc:'Fisheries drain classification',            color:'#ff4499',layerIds:[39],  svcUrl:null,        minZoom:10,opacity:.7, legend:[{color:'#c850ff',label:'C',dash:false},{color:'#ff8800',label:'D',dash:false},{color:'#ffdd00',label:'E1',dash:false},{color:'#00e5cc',label:'E2',dash:false},{color:'#44aa44',label:'F',dash:true},{color:'#aaaaaa',label:'NR',dash:true}]},
+  {id:'dfo_drain',  name:'DFO Drain Classification',  icon:'🐟',desc:'Fisheries drain classification (DFO_CLASS). Source: LIO Open Data Constructed Drain. No token needed.', color:'#ff4499',layerIds:[7],  svcUrl:OPEN01_URL,        minZoom:10,opacity:.7, legend:[{color:'#c850ff',label:'C',dash:false},{color:'#ff8800',label:'D',dash:false},{color:'#ffdd00',label:'E1',dash:false},{color:'#00e5cc',label:'E2',dash:false},{color:'#44aa44',label:'F',dash:true},{color:'#aaaaaa',label:'NR',dash:true}]},
   {id:'oromedonte_parcels', name:'Oro-Medonte Parcels (Simcoe)', icon:'🏘',desc:'Township of Oro-Medonte assessment parcels. Source: County of Simcoe. No token needed.', color:'#ff66cc',layerIds:[0], svcUrl:'oromedonte', minZoom:12,opacity:.55},
   {id:'dtm_lidar',  name:'LiDAR DTM (bare earth)', icon:'⛰',desc:'Ontario Digital Terrain Model — bare-earth elevation from LiDAR. Use for drainage/contours. MNRF.', color:'#c8a25a',layerIds:[],svcUrl:'dtm',minZoom:10,opacity:.7},
   {id:'olc_v1',    name:'Ontario Land Cover V1',icon:'🗺️',desc:'Full land cover 2020: forest, wetland, crop, grassland, urban, water. 15m. MNRF/LIO.',color:'#a3e635',layerIds:[],svcUrl:'olc',minZoom:8,opacity:.75},
@@ -1728,6 +1734,65 @@ function toggleAgLayer(id,enabled){
       });
       dtmLayer.addTo(map);
       agLayerInstances[id]=dtmLayer;
+      return;
+    }
+    if(id==='soil_cap'){
+      const CAP_COLORS={'1':'#1a9850','2':'#66bd63','3':'#a6d96a','4':'#fee08b','5':'#fdae61','6':'#f46d43','7':'#d73027','O':'#8c6d3f'};
+      const fl=L.esri.featureLayer({
+        url:SOIL_SURVEY_URL, simplifyFactor:0.4, precision:5,
+        style:f=>{const c=(f.properties.CLASS1||'').trim();return{color:'#555',weight:0.5,opacity:0.6,fillColor:CAP_COLORS[c]||'#999999',fillOpacity:layerDef.opacity||0.6};},
+        onEachFeature:(f,layer)=>{const a=f.properties||{};if(a.SOIL_NAME1)layer.bindTooltip(`${a.SOIL_NAME1} — Class ${a.CLASS1||'?'}`,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='soil_drain'){
+      const DR_COLORS={'R':'#a50026','W':'#f46d43','MW':'#fee08b','I':'#abd9e9','P':'#4575b4','VP':'#313695'};
+      const fl=L.esri.featureLayer({
+        url:SOIL_SURVEY_URL, simplifyFactor:0.4, precision:5,
+        style:f=>{const d=(f.properties.DRAINAGE1||'').trim();return{color:'#555',weight:0.5,opacity:0.6,fillColor:DR_COLORS[d]||'#999999',fillOpacity:layerDef.opacity||0.6};},
+        onEachFeature:(f,layer)=>{const a=f.properties||{};if(a.SOIL_NAME1)layer.bindTooltip(`${a.SOIL_NAME1} — Drainage ${a.DRAINAGE1||'?'}`,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='hsg'){
+      const HSG_COLORS={'A':'#22c55e','A/B':'#86efac','B':'#60a5fa','B/C':'#818cf8','C':'#f59e0b','C/D':'#fb923c','D':'#ef4444','W':'#a78bfa'};
+      const hsgKey=props=>{
+        const h1=(props.HYDRO1||'').trim(), h2=(props.HYDRO2||'').trim();
+        if(h1==='W'||h2==='W') return 'W';
+        if(h2 && h2!==h1){ const pair=[h1,h2].sort(); return pair[0]+'/'+pair[1]; }
+        return h1||'?';
+      };
+      const fl=L.esri.featureLayer({
+        url:SOIL_SURVEY_URL, simplifyFactor:0.4, precision:5,
+        style:f=>{const k=hsgKey(f.properties||{});return{color:'#555',weight:0.5,opacity:0.6,fillColor:HSG_COLORS[k]||'#9ca3af',fillOpacity:layerDef.opacity||0.65};},
+        onEachFeature:(f,layer)=>{const a=f.properties||{};if(a.SOIL_NAME1)layer.bindTooltip(`${a.SOIL_NAME1} — HSG ${hsgKey(a)}`,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='dfo_drain'){
+      const DFO_COLORS={'C':'#c850ff','D':'#ff8800','E1':'#ffdd00','E2':'#00e5cc','F':'#44aa44','NR':'#aaaaaa'};
+      const DFO_DASH=new Set(['F','NR']);
+      const fl=L.esri.featureLayer({
+        url:OPEN01_URL+'/7', simplifyFactor:0.3, precision:5,
+        style:f=>{const cls=(f.properties.DFO_CLASS||'NR').trim();return{color:DFO_COLORS[cls]||'#aaaaaa',weight:2.5,opacity:layerDef.opacity||0.7,dashArray:DFO_DASH.has(cls)?'6 4':null};},
+        onEachFeature:(f,layer)=>{const a=f.properties||{};const name=a.OFFICIAL_NAME||'Unnamed drain';layer.bindTooltip(`${name} — DFO ${a.DFO_CLASS||'NR'}`,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
       return;
     }
     if(id==='oromedonte_parcels'){
