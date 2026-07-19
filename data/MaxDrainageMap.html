@@ -836,6 +836,15 @@ document.addEventListener('DOMContentLoaded',function(){
         </div>
       </div>
 
+      <!-- COUNTY / MUNICIPAL ONE-OFF LAYERS -->
+      <div class="sg">
+        <div class="sg-title"><span class="sg-title-label">// County & Municipal Layers</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· Only near that county/town</span></div>
+        <div id="muniLayerList"></div>
+        <div style="font-family:var(--font-ui);font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5;padding:5px 7px;background:var(--panel2);border-radius:3px;border:1px solid var(--border);">
+          ⚠ These only cover their own municipality — you'll need to be zoomed into that specific area to see anything.
+        </div>
+      </div>
+
       <!-- GEOHUB BOUNDARY LAYERS -->
       <div class="sg">
         <div class="sg-title"><span class="sg-title-label">// GeoHub Boundaries</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· Open Data · No Token</span></div>
@@ -1486,7 +1495,7 @@ const AG_LAYERS=[
       {color:'#44aa44',label:'F — Intermittent flow, no sensitive species; minimal/no review needed',dash:true},
       {color:'#aaaaaa',label:'NR — Not Rated / not yet classified',dash:true},
     ]},
-  {id:'oromedonte_parcels', name:'Oro-Medonte Parcels (Simcoe)', icon:'🏘',desc:'Assessment parcels specific to the Township of Oro-Medonte, served directly by Simcoe County rather than the provincial AgMaps token system.', color:'#ff66cc',layerIds:[0], svcUrl:'oromedonte', minZoom:12,opacity:.55,
+  {id:'oromedonte_parcels', group:'muni', name:'Oro-Medonte Parcels (Simcoe)', icon:'🏘',desc:'Assessment parcels specific to the Township of Oro-Medonte, served directly by Simcoe County rather than the provincial AgMaps token system.', color:'#ff66cc',layerIds:[0], svcUrl:'oromedonte', minZoom:12,opacity:.55,
     source:'County of Simcoe open GIS server. No token needed. Last-updated date not published anywhere by Simcoe County for this specific service — unlike the provincial LIO layers above, this one has no discoverable metadata to check.',
     sourceUrl:'https://maps.simcoe.ca/arcgis/rest/services/OroMedonte/Assessment_Parcels/MapServer',
     infoUrl:'https://simcoe.ca/explore/geographical-information-systems-maps/'},
@@ -1532,36 +1541,38 @@ const AG_LAYERS=[
     {color:'#c8c8c8',label:'Urban / Built-up'},
     {color:'#e8e8e8',label:'Barren / Exposed'},
   ]},
-  {id:'essex_drains', name:'Drains (Essex County)', icon:'💧',desc:'Legal/municipal drains under the Drainage Act, mapped directly by the County of Essex — same idea as the province-wide Municipal Drains layer above, but this is the county\'s own, more locally-maintained dataset for its area.', color:'#00bfff',layerIds:[],svcUrl:'essex_drains',minZoom:10,opacity:.85,
-    source:'County of Essex public GIS server (coe_water service, "Drainage" sublayer, has a DRAIN_NAME field), verified 2026-07-19. No token needed. No published last-updated date for this specific sublayer.',
+  {id:'essex_drains', group:'muni', name:'Drains (Essex County)', icon:'💧',desc:'Legal/municipal drains under the Drainage Act, mapped directly by the County of Essex — same idea as the province-wide Municipal Drains layer above, but this is the county\'s own, more locally-maintained dataset for its area.', color:'#00bfff',layerIds:[],svcUrl:'essex_drains',minZoom:10,opacity:.85,
+    source:'County of Essex public GIS server (coe_water service, "Drainage" sublayer, has a DRAIN_NAME field), verified 2026-07-19. No token needed. This sublayer has no date field at all (checked its full field list), so there\'s no last-updated signal to show, live or otherwise.',
     sourceUrl:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/coe_water/MapServer/4',
     infoUrl:'https://www.countyofessex.ca/discover-the-county/maps/'},
-  {id:'cw_storm',  name:'Storm Sewer (Centre Wellington)', icon:'🌧️',desc:'Storm sewer network for Centre Wellington (Fergus/Elora) — outfalls, catch basins, maintenance holes, laterals and conveyance channels — rendered with the township\'s own utility symbology.', color:'#4488ff',layerIds:[],svcUrl:'cw_storm',minZoom:13,opacity:1,
-    source:'Township of Centre Wellington public GIS server (AM_Storm_Sewer service), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+  {id:'cw_storm', group:'muni', name:'Storm Sewer (Centre Wellington)', icon:'🌧️',desc:'Storm sewer network for Centre Wellington (Fergus/Elora) — outfalls, catch basins, maintenance holes, laterals and conveyance channels — rendered with the township\'s own utility symbology.', color:'#4488ff',layerIds:[],svcUrl:'cw_storm',minZoom:13,opacity:1,
+    source:'Township of Centre Wellington public GIS server (AM_Storm_Sewer service), verified 2026-07-19. No token needed. No official catalog date, but the service tracks real edits — last-updated is the most recent edit timestamp on its own data, checked live.',
+    lastUpdated:'2025-05-13',
     sourceUrl:'https://gis.centrewellington.ca/server/rest/services/AM_Storm_Sewer/MapServer',
     infoUrl:'http://www.centrewellington.ca/township-services/maps/'},
-  {id:'cw_airphoto', name:'2023 Airphoto 7.5cm (Centre Wellington)', icon:'🛰',desc:'High-resolution (7.5cm/pixel) orthophoto covering Centre Wellington (Fergus/Elora), flown 2023 — noticeably sharper than the province-wide basemap imagery, useful for site-level detail in that area.', color:'#00e5ff',layerIds:[],svcUrl:'cw_airphoto',minZoom:13,opacity:1,
+  {id:'cw_airphoto', group:'muni', name:'2023 Airphoto 7.5cm (Centre Wellington)', icon:'🛰',desc:'High-resolution (7.5cm/pixel) orthophoto covering Centre Wellington (Fergus/Elora), flown 2023 — noticeably sharper than the province-wide basemap imagery, useful for site-level detail in that area.', color:'#00e5ff',layerIds:[],svcUrl:'cw_airphoto',minZoom:13,opacity:1,
     source:'Township of Centre Wellington public GIS server (Airphoto2023_7_5cm_dynamic ImageServer), verified 2026-07-19. No token needed. No published last-updated date beyond the 2023 flight year in the service name.',
     sourceUrl:'https://gis.centrewellington.ca/server/rest/services/Airphoto2023_7_5cm_dynamic/ImageServer',
     infoUrl:'http://www.centrewellington.ca/township-services/maps/'},
-  {id:'barrie_storm', name:'Storm Sewer (Barrie)', icon:'🌧️',desc:'City of Barrie storm sewer network — devices (manholes/catch basins), pipe runs, stormwater management ponds, low-impact-development features, and drainage catchment areas.', color:'#4488ff',layerIds:[],svcUrl:'barrie_storm',minZoom:12,opacity:1,
-    source:'City of Barrie public Open Data GIS server (Open_Data/StormInfrastructure), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+  {id:'barrie_storm', group:'muni', name:'Storm Sewer (Barrie)', icon:'🌧️',desc:'City of Barrie storm sewer network — devices (manholes/catch basins), pipe runs, stormwater management ponds, low-impact-development features, and drainage catchment areas.', color:'#4488ff',layerIds:[],svcUrl:'barrie_storm',minZoom:12,opacity:1,
+    source:'City of Barrie public Open Data GIS server (Open_Data/StormInfrastructure), verified 2026-07-19. No token needed. No official catalog date, but the service tracks real edits — last-updated is the most recent edit timestamp on its own data, checked live.',
+    lastUpdated:'2026-07-09',
     sourceUrl:'https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/StormInfrastructure/MapServer',
     infoUrl:'https://www.barrie.ca/services-payments/maps-gis'},
-  {id:'oxford_storm', name:'Storm Sewer (Oxford County)', icon:'🌧️',desc:'County-wide storm sewer infrastructure — manholes, catch basins, pipe runs and culverts — covering Oxford County\'s public works asset network (Cartegraph asset-management basemap).', color:'#4488ff',layerIds:[],svcUrl:'oxford_storm',minZoom:12,opacity:1,
-    source:'County of Oxford public GIS server (PublicWorks/StormInfrastructureWM), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+  {id:'oxford_storm', group:'muni', name:'Storm Sewer (Oxford County)', icon:'🌧️',desc:'County-wide storm sewer infrastructure — manholes, catch basins, pipe runs and culverts — covering Oxford County\'s public works asset network (Cartegraph asset-management basemap).', color:'#4488ff',layerIds:[],svcUrl:'oxford_storm',minZoom:12,opacity:1,
+    source:'County of Oxford public GIS server (PublicWorks/StormInfrastructureWM), verified 2026-07-19. No token needed. This service only allows Map (rendering) access, not attribute Query — so unlike Barrie/Centre Wellington, there\'s no way to check a real last-edited date, even live.',
     sourceUrl:'https://public.oxfordcounty.ca/arcgis/rest/services/PublicWorks/StormInfrastructureWM/MapServer',
     infoUrl:'https://www.oxfordcounty.ca/services-for-you/mapping/'},
-  {id:'westperth_storm', name:'Storm Sewer (West Perth)', icon:'🌧️',desc:'Municipality of West Perth (Mitchell area) storm sewer network — manholes, inlets/outlets, catch basins and gravity mains.', color:'#4488ff',layerIds:[0,1,2,3,4],svcUrl:'westperth_storm',minZoom:13,opacity:1,
-    source:'Perth County shared public GIS server (West_Perth/Public_Works_Storm_WP), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+  {id:'westperth_storm', group:'muni', name:'Storm Sewer (West Perth)', icon:'🌧️',desc:'Municipality of West Perth (Mitchell area) storm sewer network — manholes, inlets/outlets, catch basins and gravity mains.', color:'#4488ff',layerIds:[0,1,2,3,4],svcUrl:'westperth_storm',minZoom:13,opacity:1,
+    source:'Perth County shared public GIS server (West_Perth/Public_Works_Storm_WP), verified 2026-07-19. No token needed. This service\'s attribute queries fail server-side, so there\'s no way to check a real last-edited date, even live.',
     sourceUrl:'https://maps.perthcounty.ca/arcgis/rest/services/West_Perth/Public_Works_Storm_WP/MapServer',
     infoUrl:'https://www.perthcounty.ca/living-here/gis-maps/'},
-  {id:'northperth_storm', name:'Storm Sewer (North Perth)', icon:'🌧️',desc:'Municipality of North Perth (Listowel/Atwood/Monkton area) storm sewer network — catch basins, manholes, storm mains and lateral lines.', color:'#4488ff',layerIds:[1,2,3,4],svcUrl:'northperth_storm',minZoom:13,opacity:1,
-    source:'Perth County shared public GIS server (North_Perth/StormSewer_NP, "Storm Sewer Assets for North Perth"), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+  {id:'northperth_storm', group:'muni', name:'Storm Sewer (North Perth)', icon:'🌧️',desc:'Municipality of North Perth (Listowel/Atwood/Monkton area) storm sewer network — catch basins, manholes, storm mains and lateral lines.', color:'#4488ff',layerIds:[1,2,3,4],svcUrl:'northperth_storm',minZoom:13,opacity:1,
+    source:'Perth County shared public GIS server (North_Perth/StormSewer_NP, "Storm Sewer Assets for North Perth"), verified 2026-07-19. No token needed. Only one of its four sublayers has any date field at all (a per-point GPS-collection date, not a last-edited timestamp), so there\'s no single reliable last-updated signal for the layer as a whole.',
     sourceUrl:'https://maps.perthcounty.ca/arcgis/rest/services/North_Perth/StormSewer_NP/MapServer',
     infoUrl:'https://www.perthcounty.ca/living-here/gis-maps/'},
-  {id:'essex_towns_storm', name:'Storm Sewer (Essex/Kingsville/Lakeshore)', icon:'🌧️',desc:'Storm sewer network shared across the towns of Essex, Kingsville and Lakeshore — storm mains, lines, manholes and catch basins for each, distinguished by prefix (E/K/L) in each feature\'s attributes.', color:'#4488ff',layerIds:[24,25,27,28,29,31,32,33,35,36,37],svcUrl:'essex_towns_storm',minZoom:12,opacity:1,
-    source:'County of Essex public GIS server (County/MunicipalInfrastructure, "Storm" group), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+  {id:'essex_towns_storm', group:'muni', name:'Storm Sewer (Essex/Kingsville/Lakeshore)', icon:'🌧️',desc:'Storm sewer network shared across the towns of Essex, Kingsville and Lakeshore — storm mains, lines, manholes and catch basins for each, distinguished by prefix (E/K/L) in each feature\'s attributes.', color:'#4488ff',layerIds:[24,25,27,28,29,31,32,33,35,36,37],svcUrl:'essex_towns_storm',minZoom:12,opacity:1,
+    source:'County of Essex public GIS server (County/MunicipalInfrastructure, "Storm" group), verified 2026-07-19. No token needed. The only date-like field present ("Date_") turned out to be pipe construction/installation year, not a last-edited date — showing it as "last updated" would be misleading, so it\'s omitted.',
     sourceUrl:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/MunicipalInfrastructure/MapServer',
     infoUrl:'https://www.countyofessex.ca/discover-the-county/maps/'},
 ];
@@ -1698,7 +1709,7 @@ map.on('layeradd',()=>setTimeout(applyTileFilter,50));
 // Colour-codes a layer's last-updated date by how stale it is, computed live against
 // today's date (not hardcoded) so the badge stays accurate no matter when it's viewed.
 function updatedBadge(dateStr){
-  if(!dateStr) return '';
+  if(!dateStr) return `<span style="display:inline-block;margin-top:3px;padding:2px 7px;background:rgba(255,255,255,.05);border:1px solid var(--border2);border-radius:3px;color:var(--muted);font-family:var(--font-ui);font-size:10.5px;letter-spacing:.3px;font-weight:600;white-space:nowrap;font-style:italic;">📅 Date not published by source</span>`;
   const then=new Date(dateStr+'T00:00:00Z');
   const days=Math.round((Date.now()-then.getTime())/86400000);
   let bg,fg,border;
@@ -1734,6 +1745,13 @@ const AGOL_LASTUPDATED_ITEMS={
 };
 const AAFC_CKAN_DATASET_ID='ba2645d5-4458-414d-b196-6303ac06c1c9';
 
+// County/municipal layers whose servers actually allow querying a real last-edited
+// date directly off their own data (most don't — see each layer's `source` text for why).
+const MUNI_LASTUPDATED_QUERIES={
+  barrie_storm:{url:'https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/StormInfrastructure/MapServer/0',field:'LASTUPDATE'},
+  cw_storm:{url:'https://gis.centrewellington.ca/server/rest/services/AM_Storm_Sewer/MapServer/1',field:'last_edited_date'},
+};
+
 function applyLastUpdated(id,dateStr){
   const layerDef=AG_LAYERS.find(l=>l.id===id);
   if(layerDef) layerDef.lastUpdated=dateStr;
@@ -1758,19 +1776,29 @@ async function refreshLastUpdatedDates(){
       if(modified) applyLastUpdated('aafc_crop',modified.slice(0,10));
     }catch(e){ console.debug('lastUpdated refresh failed for aafc_crop — keeping cached date:',e.message); }
   })());
+  Object.entries(MUNI_LASTUPDATED_QUERIES).forEach(([id,q])=>{
+    jobs.push((async()=>{
+      try{
+        const stat=encodeURIComponent(JSON.stringify([{statisticType:'max',onStatisticField:q.field,outStatisticFieldName:'maxDate'}]));
+        const r=await fetch(`${q.url}/query?where=1=1&outStatistics=${stat}&f=json`,{signal:AbortSignal.timeout(8000)});
+        const d=await r.json();
+        const ms=d?.features?.[0]?.attributes?.maxDate;
+        if(ms) applyLastUpdated(id,new Date(ms).toISOString().slice(0,10));
+      }catch(e){ console.debug('lastUpdated refresh failed for',id,'— keeping cached date:',e.message); }
+    })());
+  });
   await Promise.allSettled(jobs);
 }
 
-function buildAgLayerUI(){
-  const container=document.getElementById('agLayerList');
-  container.innerHTML=AG_LAYERS.map(l=>`
+function renderAgLayerCard(l){
+  return `
     <div class="ag-layer-item" id="ag-item-${l.id}">
       <div class="ag-layer-header" onclick="toggleAgExpand('${l.id}')">
         <span class="ag-layer-icon">${l.icon}</span>
         <div class="ag-layer-info">
           <div class="ag-layer-name" style="color:${l.color}">${l.name}</div>
           <div class="ag-layer-desc">${l.desc}</div>
-          <div class="ag-updated-badge">${l.lastUpdated?updatedBadge(l.lastUpdated):''}</div>
+          <div class="ag-updated-badge">${updatedBadge(l.lastUpdated)}</div>
         </div>
         <label class="tog" onclick="event.stopPropagation()" style="margin-left:4px" title="${l.broken?'Unavailable — live service was removed by the data provider':''}">
           <input type="checkbox" id="ag-tog-${l.id}" onchange="toggleAgLayer('${l.id}',this.checked)" ${l.broken?'disabled':''}>
@@ -1801,7 +1829,12 @@ function buildAgLayerUI(){
           </div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+}
+
+function buildAgLayerUI(){
+  document.getElementById('agLayerList').innerHTML=AG_LAYERS.filter(l=>l.group!=='muni').map(renderAgLayerCard).join('');
+  document.getElementById('muniLayerList').innerHTML=AG_LAYERS.filter(l=>l.group==='muni').map(renderAgLayerCard).join('');
 }
 
 function toggleAgExpand(id){document.getElementById('ag-item-'+id).classList.toggle('expanded');}
