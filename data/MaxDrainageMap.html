@@ -74,11 +74,11 @@ header{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1
 /* SIDEBAR */
 .sidebar{width:272px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;transition:width .25s ease;}
 .sidebar.collapsed{width:0;}
-.upload-zone{margin:11px 11px 0;border:2px dashed var(--border2);border-radius:4px;padding:14px 11px;text-align:center;cursor:pointer;transition:all .2s;position:relative;flex-shrink:0;}
+.upload-zone{margin:11px 11px 0;border:1px dashed var(--border2);border-radius:4px;padding:8px 11px;text-align:center;cursor:pointer;transition:all .2s;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:7px;}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(0,229,255,.05);}
 .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
-.upload-icon{font-size:24px;margin-bottom:4px;display:block;}
-.upload-zone p{font-size:14px;color:var(--text);opacity:.85;line-height:1.5;}
+.upload-icon{font-size:15px;display:inline-block;}
+.upload-zone p{font-size:12.5px;color:var(--text);opacity:.9;line-height:1.3;margin:0;font-family:var(--font-ui);font-weight:600;letter-spacing:.2px;}
 .upload-zone strong{color:var(--text);font-weight:700;}
 .section-title{font-family:var(--font-mono);font-size:11.5px;letter-spacing:2.5px;color:var(--muted);padding:7px 11px 4px;border-top:1px solid var(--border);text-transform:uppercase;margin-top:8px;flex-shrink:0;}
 .photo-list{flex:1;overflow-y:auto;padding:4px 6px;}
@@ -602,10 +602,10 @@ document.addEventListener('DOMContentLoaded',function(){
 
   <!-- LEFT: Photo list -->
   <div class="sidebar" id="sidebarPhotos">
-    <div class="upload-zone" id="uploadZone">
+    <div class="upload-zone" id="uploadZone" title="Drop photos here, or click to browse — JPEG · HEIC · GPS EXIF data">
       <input type="file" id="fileInput" accept="image/*,.heic,.heif" multiple>
-      <span class="upload-icon">📡</span>
-      <p><strong>Drop photos here</strong><br>or click to browse<br><span style="font-size:11px;font-family:var(--font-ui)">JPEG · HEIC · GPS EXIF data</span></p>
+      <span class="upload-icon">📷</span>
+      <p>Add Photos</p>
     </div>
     <div class="section-title">// Photo Log</div>
     <div class="photo-list" id="photoList">
@@ -960,6 +960,18 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="cprow"><span>Muted</span>   <input type="color" id="cp-muted"   value="#7A9AB8" oninput="setCSSVar('--muted',this.value)"></div>
         <div class="cprow"><span>Green</span>   <input type="color" id="cp-green"   value="#39ff14" oninput="setCSSVar('--green',this.value)"></div>
         <div class="cprow"><span>Yellow</span>  <input type="color" id="cp-yellow"  value="#ffd600" oninput="setCSSVar('--yellow',this.value)"></div>
+      </div>
+
+      <!-- SOURCES & REFERENCES -->
+      <div class="sg">
+        <div class="sg-title"><span class="sg-title-label">// Sources &amp; References</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· Data dictionaries &amp; technical docs</span></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:10px 12px;">
+            <div style="font-family:var(--font-ui);font-weight:700;font-size:13px;color:var(--accent);">Soil Survey Complex — Data Description</div>
+            <div style="font-family:var(--font-ui);font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.5;">Official OMAFRA/LIO data dictionary behind the Soil Capability, Soil Drainage Class, Hydrologic Soil Group, and Soil Erodibility (K-factor) layers — field definitions, classification codes, and source methodology.</div>
+            <a href="https://www.publicdocs.mnr.gov.on.ca/mirb/Soil%20Survey%20Complex%20-%20Data%20Description.pdf" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;color:var(--green);font-family:var(--font-ui);font-weight:600;font-size:12px;">📄 Open PDF ↗</a>
+          </div>
+        </div>
       </div>
 
     </div>
