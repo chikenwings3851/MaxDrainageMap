@@ -1378,16 +1378,20 @@ function toggleCustomParcelLayer(enabled){
 const AG_LAYERS=[
   {id:'lots',       name:'Lots & Concessions',       icon:'📐',desc:'The historical survey grid (lots & concessions) that Ontario land titles and legal descriptions are still based on today.',     color:'#ffd600',layerIds:[1,2], svcUrl:null,        minZoom:11,opacity:.7,
     source:'Land Information Ontario (LIO) Open Data — Lot Fabric Improved. No token needed.',
-    sourceUrl:LOT_FABRIC_URL},
+    sourceUrl:LOT_FABRIC_URL,
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/lio::lot-fabric-improved/about'},
   {id:'drains',     name:'Municipal Drains',          icon:'💧',desc:'Drains constructed and maintained under the Drainage Act — the actual engineered channels, not natural watercourses.', color:'#00bfff',layerIds:[7],  svcUrl:OPEN01_URL,  minZoom:9, opacity:.85,
     source:'Land Information Ontario (LIO) Open Data — "Constructed Drain" (OMAFRA), verified 2026-07-19. No token needed.',
-    sourceUrl:OPEN01_URL+'/7'},
+    sourceUrl:OPEN01_URL+'/7',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::constructed-drain/explore'},
   {id:'tile_drain', name:'Tile Drainage',             icon:'🔵',desc:'Areas where subsurface agricultural tile has been installed to drain fields — reported by licensed drainage contractors to OMAFRA. Does not show individual tile runs, only the mapped extent of tiled area.', color:'#4488ff',layerIds:[11],  svcUrl:OPEN01_URL, minZoom:10,opacity:.6,
     source:'Land Information Ontario (LIO) Open Data — "Tile Drainage Area" (OMAFRA), verified 2026-07-19. No token needed.',
-    sourceUrl:OPEN01_URL+'/11'},
+    sourceUrl:OPEN01_URL+'/11',
+    infoUrl:'https://geohub.lio.gov.on.ca/maps/ontarioca11::tile-drainage-area'},
   {id:'controlled', name:'Controlled Drainage',       icon:'🔶',desc:'Structures (pumps, control dams, check drains, water-level control devices) that regulate the water table to a depth favourable for crop growth. Colours = the server\'s own condition rating for each structure.', color:'#ff9900',layerIds:[22],  svcUrl:null,        minZoom:10,opacity:.7,
     source:'Ontario AIA/AgMaps (token required) — no live open-data service exists for this layer; only a static download package is published (ControlledDrainage.zip via LIO). Colours decoded directly from the server\'s own legend images, verified 2026-07-19.',
     sourceUrl:AIA_URL+'/22',
+    infoUrl:'https://ontariogeohub-lio.opendata.arcgis.com/datasets/controlled-drainage',
     legend:[
       {color:'#0000fe',label:'Good condition'},
       {color:'#fe0051',label:'Fair condition'},
@@ -1395,22 +1399,28 @@ const AG_LAYERS=[
     ]},
   {id:'asr_parcels', name:'Assessment Parcels (ARN)',     icon:'📋',desc:'Individual property parcels as defined by MPAC assessment (ARN = Assessment Roll Number, the unique ID for each taxable property).',   color:'#00e5ff',layerIds:[0],   svcUrl:PARCEL_URL,  minZoom:12,opacity:.55,requiresToken:true,
     source:'Ontario AIA/AgMaps — MPAC/Teranet licensed assessment data. Requires token (licensing restriction, cannot be migrated to open data).',
-    sourceUrl:PARCEL_URL},
+    sourceUrl:PARCEL_URL,
+    infoUrl:'https://geohub.lio.gov.on.ca/documents/lio::ontario-parcel/about'},
   {id:'roll_labels', name:'Roll Number Labels',          icon:'🏷️',desc:'Text labels showing each parcel\'s ARN directly on the map — same licensed data as the parcel layer above, just rendered as labels.', color:'#ffd600',layerIds:[0],   svcUrl:PARCEL_URL,  minZoom:14,opacity:1,  requiresToken:true,isLabelLayer:true,
     source:'Ontario AIA/AgMaps — MPAC/Teranet licensed assessment data. Requires token.',
-    sourceUrl:PARCEL_URL},
+    sourceUrl:PARCEL_URL,
+    infoUrl:'https://geohub.lio.gov.on.ca/documents/lio::ontario-parcel/about'},
   {id:'townships',  name:'Geographic Townships',      icon:'🗂', desc:'The original survey township boundaries from Ontario\'s historical land survey — these predate, and don\'t always match, today\'s municipal boundaries.',    color:'#ff6b35',layerIds:[1],   svcUrl:null,        minZoom:7, opacity:.65,
     source:'Land Information Ontario (LIO) Open Data — Geographic Township Improved. No token needed.',
-    sourceUrl:TOWNSHIP_URL},
+    sourceUrl:TOWNSHIP_URL,
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/lio::geographic-township-improved/about'},
   {id:'municipal',  name:'Municipal Boundaries',      icon:'🏛', desc:'Current lower-tier and single-tier municipality boundaries (the actual local government jurisdictions today, distinct from the historical townships above).', color:'#c850ff',layerIds:[10],  svcUrl:null,        minZoom:7, opacity:.6,
     source:'Land Information Ontario (LIO) Open Data — Municipal Bnd Lower And Single. No token needed.',
-    sourceUrl:MUNICIPAL_URL},
+    sourceUrl:MUNICIPAL_URL,
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/lio::municipal-boundary-lower-and-single-tier/about'},
   {id:'conservation',name:'Conservation Authorities', icon:'🌲',desc:'Watershed-based agencies (one per major watershed) responsible for natural hazard regulation, floodplain mapping, and watershed management — relevant for permits near water.', color:'#39ff14',layerIds:[11],  svcUrl:OPEN03_URL,  minZoom:6, opacity:.5,
     source:'Land Information Ontario (LIO) Open Data — Conservation Authority Admin Area, verified 2026-07-19. No token needed.',
-    sourceUrl:OPEN03_URL+'/11'},
+    sourceUrl:OPEN03_URL+'/11',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/lio::conservation-authority-administrative-area/about'},
   {id:'soil_cap',   name:'Soil Capability',           icon:'🌱',desc:'Canada Land Inventory (CLI) rating of how suitable the soil is for common field crops (corn, soybeans, small grains, forages) — combines productivity, crop flexibility, and management needs.', color:'#88cc44',layerIds:[],  svcUrl:SOIL_SURVEY_URL,        minZoom:9, opacity:.6,
     source:'OMAFRA Soil Survey Complex (CLI1 field) via LIO Open Data, verified 2026-07-19 against the official LIO data dictionary. No token needed.',
     sourceUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/Soil%20Survey%20Complex%20-%20Data%20Description.pdf',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::soil-survey-complex/about',
     legend:[
       {color:'#1a9850',label:'1 — No significant limitations for crops'},
       {color:'#66bd63',label:'2 — Moderate limitations'},
@@ -1425,6 +1435,7 @@ const AG_LAYERS=[
   {id:'soil_drain', name:'Soil Drainage Class',       icon:'🟡',desc:'How well the natural soil drains under normal conditions — a key input for tile spacing, drain design, and septic/stormwater suitability.', color:'#ffdd00',layerIds:[],  svcUrl:SOIL_SURVEY_URL,        minZoom:9, opacity:.6,
     source:'OMAFRA Soil Survey Complex (DRAINAGE1 field) via LIO Open Data, verified 2026-07-19 against the official LIO data dictionary. No token needed.',
     sourceUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/Soil%20Survey%20Complex%20-%20Data%20Description.pdf',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::soil-survey-complex/about',
     legend:[
       {color:'#a50026',label:'VR — Very Rapidly drained'},
       {color:'#d73027',label:'R — Rapidly drained'},
@@ -1439,6 +1450,7 @@ const AG_LAYERS=[
   {id:'hsg',        name:'Hydrologic Soil Group',     icon:'💧',desc:'Groups soils by infiltration rate when thoroughly wet — used to estimate runoff from precipitation for stormwater/drainage design (higher letter = slower infiltration = more runoff).',color:'#38bdf8',layerIds:[],svcUrl:SOIL_SURVEY_URL,minZoom:9,opacity:.65,
     source:'OMAFRA Soil Survey Complex (HYDRO1/HYDRO2 fields) via LIO Open Data, verified 2026-07-19 against the official LIO data dictionary; classification method per Chisholm (1981) and Chisholm, Irwin & Acton (1984).',
     sourceUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/Soil%20Survey%20Complex%20-%20Data%20Description.pdf',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::soil-survey-complex/about',
     legend:[
     {color:'#22c55e',label:'A — High infiltration (low runoff). Deep, well to excessively drained sand/gravelly sand.'},
     {color:'#86efac',label:'A/B — Mixed A/B soil complex'},
@@ -1452,6 +1464,7 @@ const AG_LAYERS=[
   {id:'dfo_drain',  name:'DFO Drain Classification',  icon:'🐟',desc:'Fisheries and Oceans Canada\'s sensitivity rating for fish habitat in a drain, under the federal Fisheries Act — determines what level of review (if any) drain maintenance work needs.', color:'#ff4499',layerIds:[7],  svcUrl:OPEN01_URL,        minZoom:10,opacity:.7,
     source:'Land Information Ontario (LIO) Open Data — "Constructed Drain" (DFO_CLASS field), verified 2026-07-19. General framework confirmed against DFO\'s public Guidance Document for Maintaining and Repairing Municipal Drains; exact A/B vs E1/E2 boundary not independently re-verified here — treat borderline cases as needing a DFO/Conservation Authority check regardless of what this layer shows.',
     sourceUrl:OPEN01_URL+'/7',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::constructed-drain/explore',
     legend:[
       {color:'#c850ff',label:'C — Lower sensitivity; streamlined "Class Authorization" review'},
       {color:'#ff8800',label:'D — Higher sensitivity; full site-specific Fisheries Act review'},
@@ -1462,13 +1475,16 @@ const AG_LAYERS=[
     ]},
   {id:'oromedonte_parcels', name:'Oro-Medonte Parcels (Simcoe)', icon:'🏘',desc:'Assessment parcels specific to the Township of Oro-Medonte, served directly by Simcoe County rather than the provincial AgMaps token system.', color:'#ff66cc',layerIds:[0], svcUrl:'oromedonte', minZoom:12,opacity:.55,
     source:'County of Simcoe open GIS server. No token needed.',
-    sourceUrl:'https://maps.simcoe.ca/arcgis/rest/services/OroMedonte/Assessment_Parcels/MapServer'},
+    sourceUrl:'https://maps.simcoe.ca/arcgis/rest/services/OroMedonte/Assessment_Parcels/MapServer',
+    infoUrl:'https://simcoe.ca/explore/geographical-information-systems-maps/'},
   {id:'dtm_lidar',  name:'LiDAR DTM (bare earth)', icon:'⛰',desc:'Bare-earth ground elevation from airborne LiDAR — buildings and vegetation are digitally stripped out, leaving just the terrain. This is what the app\'s DTM export/contour tools pull real elevation values from.', color:'#c8a25a',layerIds:[],svcUrl:'dtm',minZoom:10,opacity:.7,
     source:'Ontario Digital Terrain Model (LiDAR-derived), MNRF, via LIO. No token needed.',
-    sourceUrl:'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer'},
+    sourceUrl:'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer',
+    infoUrl:'https://geohub.lio.gov.on.ca/maps/mnrf::ontario-digital-terrain-model-lidar-derived/about'},
   {id:'olc_v1',    name:'Ontario Land Cover V1',icon:'🗺️',desc:'Province-wide land cover classification (forest, wetland, cropland, grassland, urban, water) at 15m resolution from 2020 imagery — good general-purpose coverage anywhere in Ontario.',color:'#a3e635',layerIds:[],svcUrl:'olc',minZoom:8,opacity:.75,
     source:'Ontario Land Cover Compilation V1, MNRF/LIO. No token needed. Colours decoded directly from the live service legend, verified 2026-07-19.',
     sourceUrl:'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Thematic/Ontario_Land_Cover_Baseline_V1/ImageServer',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontario-land-cover-version-1-0',
     legend:[
       {color:'#d7c29e',label:'Prairie'},{color:'#d7d79e',label:'Savanah'},{color:'#e8beff',label:'Alvar'},
       {color:'#ffd37f',label:'Dune'},{color:'#e6e600',label:'Meadow'},{color:'#a8a800',label:'Shrubland'},
@@ -1484,6 +1500,7 @@ const AG_LAYERS=[
   {id:'solris',    name:'SOLRIS / Land Cover v2',icon:'🌲',desc:'A more detailed land cover classification (forest, wetland, agriculture, urban, and finer sub-categories) purpose-built for Southern Ontario — more precise than OLC V1 within its coverage area.',color:'#2d8a4e',layerIds:[],svcUrl:'solris',minZoom:8,opacity:.7,
     source:'Southern Ontario Land Resource Information System (SOLRIS) v2, MNRF. Requires token (this specific service is token-gated even though it\'s conceptually "open" data). The service\'s own /legend endpoint currently errors (HTTP 500) even with a token, so these colours are the app\'s existing best-effort palette, not independently re-verified against a live legend on 2026-07-19 — the app already auto-corrects to the real legend at runtime where possible (see querySWMHYMO).',
     sourceUrl:'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Thematic/Ontario_Land_Cover_Compilation_v2/ImageServer',
+    infoUrl:'https://geohub.lio.gov.on.ca/documents/5311d0d00fe7489b84cf910dd7f7d589',
     legend:[
       {color:'#004da8',label:'Open Water'},{color:'#73b2ff',label:'Open Shoreline'},{color:'#bee8ff',label:'Tilled / Mudflat'},
       {color:'#008a8a',label:'Open Bog'},{color:'#00a884',label:'Open Fen'},{color:'#4cb09e',label:'Marsh'},
@@ -1499,6 +1516,7 @@ const AG_LAYERS=[
   {id:'aafc_crop',  name:'AAFC Crop Inventory 2024',  icon:'🌾',desc:'Which specific crop was growing in each field in 2024 (corn, soy, wheat, hay, pasture, etc.), derived from satellite imagery — useful for confirming current land use vs. the static land-cover layers above.',color:'#22c55e',layerIds:[],svcUrl:null,minZoom:8,opacity:.75,
     source:'Annual Crop Inventory 2024, Agriculture and Agri-Food Canada (AAFC). No token needed.',
     sourceUrl:'https://agriculture.canada.ca/imagery-images/rest/services/annual_crop_inventory/2024/ImageServer',
+    infoUrl:'https://agriculture.canada.ca/atlas/aci/',
     legend:[
     {color:'#e7c9a9',label:'Corn'},
     {color:'#a8c797',label:'Soybeans'},
@@ -1677,7 +1695,12 @@ function buildAgLayerUI(){
             <span style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;color:var(--text)">${e.label}</span>
           </div>`).join('')}
         </div>`:''}
-        <div class="ag-source">${l.source?escHtml(l.source):`Layer ${l.layerIds.join('+')} · ${l.svcUrl?'Assessment_Parcel_Map':'AIA_Map'}`}${l.sourceUrl?`<br><a href="${escHtml(l.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent)">🔗 view source</a>`:''}</div>
+        <div class="ag-source">${l.source?escHtml(l.source):`Layer ${l.layerIds.join('+')} · ${l.svcUrl?'Assessment_Parcel_Map':'AIA_Map'}`}
+          <div style="display:flex;gap:10px;margin-top:4px;">
+            ${l.infoUrl?`<a href="${escHtml(l.infoUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--green)">📖 plain-English page</a>`:''}
+            ${l.sourceUrl?`<a href="${escHtml(l.sourceUrl)}" target="_blank" rel="noopener noreferrer" style="color:var(--muted)">🔗 raw data/technical</a>`:''}
+          </div>
+        </div>
       </div>
     </div>`).join('');
 }
