@@ -26,8 +26,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <script src="https://unpkg.com/shpjs@4.0.4/dist/shp.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap');
-:root{--bg:#0b0e13;--panel:#111620;--panel2:#161d2a;--panel3:#1a2335;--border:#1e2a3a;--border2:#263040;--accent:#00e5ff;--accent2:#ff6b35;--text:#E2EEF8;--muted:#7A9AB8;--green:#39ff14;--yellow:#ffd600;--purple:#c850ff;}
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+:root{--bg:#0b0e13;--panel:#111620;--panel2:#161d2a;--panel3:#1a2335;--border:#1e2a3a;--border2:#263040;--accent:#00e5ff;--accent2:#ff6b35;--text:#E2EEF8;--muted:#7A9AB8;--green:#39ff14;--yellow:#ffd600;--purple:#c850ff;--font-ui:'Manrope',system-ui,sans-serif;--font-mono:'JetBrains Mono',ui-monospace,monospace;}
 *{margin:0;padding:0;box-sizing:border-box;}
 /* Accessibility: visible keyboard focus */
 *:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
@@ -36,35 +36,35 @@ button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{ou
   *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;}
 }
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
-body{font-family:'Roboto',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+body{font-family:var(--font-ui);font-size:14px;line-height:1.45;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
 
-header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;position:relative;z-index:5000;flex-wrap:wrap;}
-.logo{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:19px;color:var(--accent);letter-spacing:4px;text-shadow:0 0 20px rgba(0,229,255,.4);}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;position:relative;z-index:5000;flex-wrap:wrap;}
+.logo{font-family:var(--font-mono);font-weight:600;font-size:20px;color:var(--accent);letter-spacing:2.5px;text-shadow:0 0 20px rgba(0,229,255,.4);}
 .logo span{color:var(--accent2);}
-.tagline{font-size:11px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;}
-.stats{margin-left:auto;display:flex;gap:16px;font-family:'Roboto Mono','Share Tech Mono',monospace;}
+.tagline{font-size:11.5px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;}
+.stats{margin-left:auto;display:flex;gap:18px;font-family:var(--font-mono);}
 .stat{text-align:center;}
-.stat-val{color:var(--accent);font-size:16px;}
-.stat-lbl{color:var(--muted);font-size:11px;letter-spacing:1px;}
+.stat-val{color:var(--accent);font-size:17px;font-weight:600;}
+.stat-lbl{color:var(--muted);font-size:11px;letter-spacing:.8px;}
 .header-btns{display:flex;gap:5px;margin-left:10px;flex-wrap:wrap;}
-.hbtn{background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 11px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;border-radius:5px;transition:all .16s ease;white-space:nowrap;}
+.hbtn{background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:6px 13px;font-family:var(--font-ui);font-weight:600;font-size:13px;letter-spacing:.2px;cursor:pointer;border-radius:5px;transition:all .16s ease;white-space:nowrap;}
 .hbtn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,229,255,.13);}
 .hbtn:active{transform:translateY(0);}
 /* ── Header dropdown menus ── */
 .hmenu{position:relative;display:inline-block;}
-.hmenu>.hbtn .caret{display:inline-block;margin-left:5px;font-size:9px;transition:transform .18s ease;opacity:.75;}
+.hmenu>.hbtn .caret{display:inline-block;margin-left:5px;font-size:10px;transition:transform .18s ease;opacity:.75;}
 .hmenu.open>.hbtn{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);}
 .hmenu.open>.hbtn .caret{transform:rotate(180deg);}
 .hmenu-drop{position:absolute;top:calc(100% + 6px);left:0;background:var(--panel);border:1px solid var(--border2);border-radius:8px;width:max-content;min-width:200px;max-width:min(300px,92vw);max-height:min(66vh,460px);overflow-y:auto;overflow-x:hidden;display:none;flex-direction:column;gap:1px;z-index:60;box-shadow:0 12px 34px rgba(0,0,0,.6);padding:6px;}
 .hmenu-drop.open{display:flex;animation:hmenuIn .13s ease-out;}
 @keyframes hmenuIn{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
 .hmenu-drop.right{left:auto;right:0;}
-.hmenu-drop .hbtn{border:none;background:transparent;text-align:left;width:100%;border-radius:5px;padding:8px 10px;letter-spacing:.6px;display:flex;align-items:center;gap:8px;}
+.hmenu-drop .hbtn{border:none;background:transparent;text-align:left;width:100%;border-radius:5px;padding:8px 10px;letter-spacing:.2px;display:flex;align-items:center;gap:8px;}
 .hmenu-drop .hbtn:hover{background:rgba(0,229,255,.09);transform:none;box-shadow:none;}
 .hmenu-drop select{width:100%;box-sizing:border-box;margin:2px 0 1px;}
 .hmenu-sep{height:1px;background:var(--border2);margin:5px 4px;flex-shrink:0;}
-.hmenu-lbl{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:8px;letter-spacing:1.4px;color:var(--muted);padding:3px 10px 2px;text-transform:uppercase;}
-.hmenu-hint{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;line-height:1.55;color:var(--muted);padding:5px 10px 6px;opacity:.8;}
+.hmenu-lbl{font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:1px;color:var(--muted);padding:3px 10px 2px;text-transform:uppercase;}
+.hmenu-hint{font-family:var(--font-ui);font-size:11.5px;line-height:1.5;color:var(--muted);padding:5px 10px 6px;opacity:.85;}
 .hbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);box-shadow:0 0 8px rgba(0,229,255,.15);}
 .hbtn.draw-active{border-color:var(--yellow);color:var(--yellow);background:rgba(255,214,0,.08);animation:pulse-draw 1.5s infinite;}
 @keyframes pulse-draw{0%,100%{box-shadow:0 0 6px rgba(255,214,0,.3);}50%{box-shadow:0 0 14px rgba(255,214,0,.6);}}
@@ -79,8 +79,8 @@ header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1
 .upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
 .upload-icon{font-size:24px;margin-bottom:4px;display:block;}
 .upload-zone p{font-size:14px;color:var(--text);opacity:.85;line-height:1.5;}
-.upload-zone strong{color:var(--text);font-weight:600;}
-.section-title{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--muted);padding:7px 11px 4px;border-top:1px solid var(--border);text-transform:uppercase;margin-top:8px;flex-shrink:0;}
+.upload-zone strong{color:var(--text);font-weight:700;}
+.section-title{font-family:var(--font-mono);font-size:11.5px;letter-spacing:2.5px;color:var(--muted);padding:7px 11px 4px;border-top:1px solid var(--border);text-transform:uppercase;margin-top:8px;flex-shrink:0;}
 .photo-list{flex:1;overflow-y:auto;padding:4px 6px;}
 .photo-list::-webkit-scrollbar{width:3px;}
 .photo-list::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
@@ -90,10 +90,10 @@ header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1
 .photo-item.no-gps{opacity:.35;}
 .photo-thumb{width:38px;height:38px;object-fit:cover;border-radius:3px;flex-shrink:0;border:1px solid var(--border);}
 .photo-info{flex:1;min-width:0;}
-.photo-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.photo-coords{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:1px;}
-.photo-dir{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;color:var(--accent2);}
-.gps-badge{font-size:10px;padding:2px 4px;border-radius:2px;font-family:'Roboto Mono','Share Tech Mono',monospace;letter-spacing:1px;flex-shrink:0;}
+.photo-name{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.photo-coords{font-family:var(--font-mono);font-size:11.5px;color:var(--muted);margin-top:1px;}
+.photo-dir{font-family:var(--font-mono);font-size:11.5px;color:var(--accent2);}
+.gps-badge{font-size:10.5px;padding:2px 5px;border-radius:2px;font-family:var(--font-ui);font-weight:700;letter-spacing:.3px;flex-shrink:0;}
 .gps-badge.ok{background:rgba(57,255,20,.12);color:var(--green);}
 .gps-badge.no{background:rgba(255,107,53,.12);color:var(--accent2);}
 
@@ -101,14 +101,14 @@ header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1
 .map-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
 .map-wrap{flex:1;position:relative;overflow:hidden;}
 #map{width:100%;height:100%;}
-.coord-readout{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(17,22,32,.82);border:1px solid var(--border);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--muted);padding:3px 10px;border-radius:3px;z-index:1000;pointer-events:none;backdrop-filter:blur(4px);letter-spacing:1px;}
+.coord-readout{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(17,22,32,.82);border:1px solid var(--border);font-family:var(--font-mono);font-size:12.5px;color:var(--muted);padding:4px 11px;border-radius:3px;z-index:1000;pointer-events:none;backdrop-filter:blur(4px);letter-spacing:.5px;}
 .empty-state{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);pointer-events:none;z-index:500;}
 .empty-state.hidden{display:none;}
 .empty-icon{font-size:50px;opacity:.14;}
-.empty-state p{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;letter-spacing:2px;opacity:.38;}
+.empty-state p{font-family:var(--font-ui);font-weight:600;font-size:14px;letter-spacing:1.5px;opacity:.4;}
 
 /* DRAW HINT BAR */
-.draw-hint{background:rgba(255,214,0,.1);border-top:1px solid rgba(255,214,0,.3);border-bottom:1px solid rgba(255,214,0,.3);padding:5px 14px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--yellow);letter-spacing:1px;flex-shrink:0;display:none;align-items:center;gap:10px;z-index:600;}
+.draw-hint{background:rgba(255,214,0,.1);border-top:1px solid rgba(255,214,0,.3);border-bottom:1px solid rgba(255,214,0,.3);padding:6px 14px;font-family:var(--font-ui);font-weight:600;font-size:13px;color:var(--yellow);letter-spacing:.3px;flex-shrink:0;display:none;align-items:center;gap:10px;z-index:600;}
 .draw-hint.show{display:flex;}
 .draw-hint-cancel{margin-left:auto;cursor:pointer;border:1px solid rgba(255,214,0,.4);padding:2px 8px;border-radius:2px;transition:all .15s;}
 .draw-hint-cancel:hover{background:rgba(255,214,0,.15);}
@@ -119,32 +119,32 @@ header{display:flex;align-items:center;gap:12px;padding:7px 14px;border-bottom:1
 .results-resize-handle{position:absolute;top:-4px;left:0;right:0;height:10px;cursor:ns-resize;z-index:610;display:flex;align-items:center;justify-content:center;}
 .results-resize-handle::before{content:'';width:48px;height:4px;border-radius:2px;background:var(--accent);opacity:.5;transition:opacity .15s;}
 .results-resize-handle:hover::before{opacity:1;}
-.results-header{display:flex;align-items:center;gap:10px;padding:7px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.results-title{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--accent);letter-spacing:2px;}
-.results-count{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--muted);}
+.results-header{display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.results-title{font-family:var(--font-mono);font-size:13px;font-weight:600;color:var(--accent);letter-spacing:1.5px;}
+.results-count{font-family:var(--font-ui);font-size:13px;color:var(--muted);}
 .results-btns{margin-left:auto;display:flex;gap:6px;}
-.rbtn{background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:4px 10px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;letter-spacing:1px;cursor:pointer;border-radius:3px;transition:all .15s;}
+.rbtn{background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 12px;font-family:var(--font-ui);font-weight:600;font-size:12.5px;letter-spacing:.2px;cursor:pointer;border-radius:3px;transition:all .15s;}
 .rbtn:hover{border-color:var(--accent);color:var(--accent);}
 .rbtn.export{border-color:rgba(57,255,20,.4);color:var(--green);}
 .rbtn.export:hover{background:rgba(57,255,20,.08);}
 .rbtn.close-btn{border-color:rgba(255,107,53,.4);color:var(--accent2);}
-.results-loading{padding:20px;text-align:center;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;color:var(--muted);letter-spacing:2px;display:none;}
+.results-loading{padding:20px;text-align:center;font-family:var(--font-ui);font-weight:600;font-size:14px;color:var(--muted);letter-spacing:1px;display:none;}
 .results-loading.show{display:block;}
-.results-error{padding:12px 14px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--accent2);background:rgba(255,107,53,.07);display:none;line-height:1.6;}
+.results-error{padding:12px 14px;font-family:var(--font-ui);font-size:13px;color:var(--accent2);background:rgba(255,107,53,.07);display:none;line-height:1.6;}
 .results-error.show{display:block;}
 .results-table-wrap{overflow:auto;flex:1;}
 .results-table-wrap::-webkit-scrollbar{width:8px;height:8px;}
 .results-table-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
-/* Query results table — 2x larger, Arial */
-.results-table-wrap table{width:100%;border-collapse:collapse;font-family:Arial,Helvetica,sans-serif;font-size:18px;}
+/* Query results table */
+.results-table-wrap table{width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:14.5px;}
 .results-table-wrap thead{position:sticky;top:0;background:var(--panel2);z-index:2;}
-.results-table-wrap th{padding:9px 16px;text-align:left;color:var(--accent);letter-spacing:.5px;font-size:17px;border-bottom:1px solid var(--border2);white-space:nowrap;font-family:Arial,Helvetica,sans-serif;}
-.results-table-wrap td{padding:7px 16px;border-bottom:1px solid rgba(30,42,58,.5);color:var(--text);white-space:nowrap;font-family:Arial,Helvetica,sans-serif;font-size:18px;}
+.results-table-wrap th{padding:9px 16px;text-align:left;color:var(--accent);font-weight:700;letter-spacing:.3px;font-size:12.5px;text-transform:uppercase;border-bottom:1px solid var(--border2);white-space:nowrap;font-family:var(--font-ui);}
+.results-table-wrap td{padding:8px 16px;border-bottom:1px solid rgba(30,42,58,.5);color:var(--text);white-space:nowrap;font-family:var(--font-ui);font-size:14.5px;}
 .results-table-wrap tr:hover td{background:rgba(0,229,255,.04);}
-table{width:100%;border-collapse:collapse;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;}
+table{width:100%;border-collapse:collapse;font-family:var(--font-ui);font-size:13px;}
 thead{position:sticky;top:0;background:var(--panel2);z-index:2;}
-th{padding:5px 10px;text-align:left;color:var(--accent);letter-spacing:1px;font-size:11px;border-bottom:1px solid var(--border2);white-space:nowrap;}
-td{padding:4px 10px;border-bottom:1px solid rgba(30,42,58,.5);color:var(--text);white-space:nowrap;}
+th{padding:6px 10px;text-align:left;color:var(--accent);font-weight:700;letter-spacing:.4px;font-size:11.5px;text-transform:uppercase;border-bottom:1px solid var(--border2);white-space:nowrap;}
+td{padding:5px 10px;border-bottom:1px solid rgba(30,42,58,.5);color:var(--text);white-space:nowrap;}
 tr:hover td{background:rgba(0,229,255,.04);}
 .farm-yes{color:var(--green);}
 .farm-no{color:var(--muted);}
@@ -160,8 +160,9 @@ tr:hover td{background:rgba(0,229,255,.04);}
 .settings-inner::-webkit-scrollbar{width:3px;}
 .settings-inner::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
 .sg{margin-bottom:17px;}
-.sg-title{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;letter-spacing:3px;color:var(--accent);text-transform:uppercase;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center;}
-.sg-title::after{content:'▾';font-size:13px;opacity:.5;transition:transform .2s;flex-shrink:0;margin-left:6px;}
+.sg-title{font-family:var(--font-mono);font-size:12px;font-weight:600;letter-spacing:1.2px;color:var(--accent);text-transform:uppercase;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;white-space:nowrap;}
+.sg-title-label{order:1;overflow:hidden;text-overflow:ellipsis;}
+.sg-title::after{content:'▾';font-size:13px;opacity:.5;transition:transform .2s;flex-shrink:0;margin-left:6px;order:2;}
 .sg.sg-collapsed .sg-title::after{transform:rotate(-90deg);}
 .sg-body{overflow:hidden;transition:max-height .22s ease-out;}
 .basemap-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
@@ -169,11 +170,11 @@ tr:hover td{background:rgba(0,229,255,.04);}
 .bm-btn:hover{border-color:var(--muted);}
 .bm-btn.active{border-color:var(--accent);box-shadow:0 0 10px rgba(0,229,255,.2);}
 .bm-preview{width:100%;height:42px;display:flex;align-items:center;justify-content:center;border-bottom:1px solid var(--border);overflow:hidden;}
-.bm-label{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text);padding:4px;display:block;}
+.bm-label{font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.4px;color:var(--text);padding:4px;display:block;}
 .bm-btn.active .bm-label{color:var(--accent);}
 .srow{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
 .slabel{font-size:14px;font-weight:600;}
-.ssub{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;}
+.ssub{font-family:var(--font-ui);font-size:11.5px;color:var(--muted);margin-top:1px;}
 .sblock{width:100%;margin-bottom:10px;}
 .sblock .slabel{display:block;margin-bottom:4px;font-size:14px;font-weight:600;}
 .tog{position:relative;width:36px;height:19px;flex-shrink:0;}
@@ -185,7 +186,7 @@ tr:hover td{background:rgba(0,229,255,.04);}
 .slider-row{display:flex;align-items:center;gap:7px;}
 input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border2);border-radius:2px;outline:none;cursor:pointer;}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--accent);box-shadow:0 0 5px rgba(0,229,255,.4);cursor:pointer;}
-.sval{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:var(--accent);width:32px;text-align:right;flex-shrink:0;}
+.sval{font-family:var(--font-mono);font-size:12.5px;font-weight:600;color:var(--accent);width:34px;text-align:right;flex-shrink:0;}
 .color-row{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px;}
 .cdot{width:19px;height:19px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s;}
 .cdot.active{border-color:var(--text);transform:scale(1.2);box-shadow:0 0 5px rgba(0,0,0,.25);}
@@ -195,9 +196,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .ag-layer-header{display:flex;align-items:center;gap:7px;cursor:pointer;}
 .ag-layer-icon{font-size:14px;flex-shrink:0;width:18px;text-align:center;}
 .ag-layer-info{flex:1;min-width:0;}
-.ag-layer-name{font-size:13px;font-weight:700;line-height:1.2;}
-.ag-layer-desc{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.ag-layer-status{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;padding:2px 5px;border-radius:2px;letter-spacing:1px;flex-shrink:0;}
+.ag-layer-name{font-size:14px;font-weight:700;line-height:1.25;}
+.ag-layer-desc{font-family:var(--font-ui);font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ag-layer-status{font-family:var(--font-ui);font-size:10.5px;font-weight:700;padding:2px 6px;border-radius:2px;letter-spacing:.3px;flex-shrink:0;}
 .ag-layer-status.off{color:#8AAAC4;background:rgba(74,90,106,.15);}
 .ag-layer-status.loading{color:var(--yellow);background:rgba(255,214,0,.1);animation:blink 1s infinite;}
 .ag-layer-status.on{color:var(--green);background:rgba(57,255,20,.1);}
@@ -207,23 +208,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .ag-layer-item.expanded .ag-layer-controls{display:flex;}
 .ag-opacity-row{display:flex;align-items:center;gap:6px;}
 .ag-opacity-lbl{font-size:13px;color:var(--muted);font-weight:600;white-space:nowrap;}
-.ag-source{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.5px;margin-top:2px;}
+.ag-source{font-family:var(--font-ui);font-size:12px;line-height:1.5;color:var(--muted);letter-spacing:0;margin-top:3px;}
 .ag-source a{color:var(--muted);text-decoration:none;}
 .ag-source a:hover{color:var(--accent);}
-.zoom-warn{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--yellow);background:rgba(255,214,0,.08);border:1px solid rgba(255,214,0,.2);border-radius:2px;padding:2px 6px;margin-top:3px;display:none;}
+.zoom-warn{font-family:var(--font-ui);font-weight:600;font-size:11.5px;color:var(--yellow);background:rgba(255,214,0,.08);border:1px solid rgba(255,214,0,.2);border-radius:2px;padding:3px 7px;margin-top:3px;display:none;}
 .zoom-warn.show{display:block;}
 
 /* FARM TAX SPECIAL BADGE */
-.farm-tax-badge{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--green);background:rgba(57,255,20,.1);border:1px solid rgba(57,255,20,.25);border-radius:2px;padding:1px 5px;margin-left:4px;letter-spacing:1px;}
+.farm-tax-badge{font-family:var(--font-ui);font-size:10.5px;font-weight:700;color:var(--green);background:rgba(57,255,20,.1);border:1px solid rgba(57,255,20,.25);border-radius:2px;padding:1px 6px;margin-left:4px;letter-spacing:.3px;}
 
 
 
 
 .leaflet-draw-toolbar a{background-color:var(--panel)!important;border-color:var(--border2)!important;}
 .cprow{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;gap:8px;}
-.cprow span{font-size:12px;font-weight:600;color:var(--text);flex:1;}
+.cprow span{font-size:13px;font-weight:600;color:var(--text);flex:1;}
 input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--border2);border-radius:2px;cursor:pointer;background:var(--panel2);flex-shrink:0;}
-.tpbtn{flex:1;padding:4px 0;background:var(--panel2);border:1px solid var(--border2);color:var(--muted);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;cursor:pointer;border-radius:3px;transition:all .15s;}
+.tpbtn{flex:1;padding:6px 0;background:var(--panel2);border:1px solid var(--border2);color:var(--muted);font-family:var(--font-ui);font-weight:700;font-size:11px;letter-spacing:.6px;cursor:pointer;border-radius:3px;transition:all .15s;}
 .tpbtn:hover{border-color:var(--accent);color:var(--accent);}
 .tpbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);}
 
@@ -232,33 +233,33 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 
 /* PARCEL POPUP */
 .parcel-popup-wrap{
-  font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;
+  font-family:var(--font-ui);font-size:13px;
   background:#111620;color:#c8d8e8;
-  border:1px solid var(--accent);padding:10px 13px;
+  border:1px solid var(--accent);padding:11px 14px;
   border-radius:5px;min-width:220px;max-width:300px;
   box-shadow:0 0 20px rgba(0,229,255,.2);
 }
-.parcel-popup-arn{color:#ffd600;font-size:14px;font-weight:700;margin-bottom:6px;letter-spacing:1px;}
-.parcel-popup-row{display:flex;gap:6px;margin-bottom:3px;align-items:baseline;}
-.parcel-popup-lbl{color:#4a5a6a;font-size:11px;letter-spacing:1px;white-space:nowrap;width:80px;flex-shrink:0;}
-.parcel-popup-val{color:#c8d8e8;font-size:12px;}
+.parcel-popup-arn{font-family:var(--font-mono);color:#ffd600;font-size:15px;font-weight:700;margin-bottom:7px;letter-spacing:.5px;}
+.parcel-popup-row{display:flex;gap:6px;margin-bottom:4px;align-items:baseline;}
+.parcel-popup-lbl{font-family:var(--font-mono);color:#4a5a6a;font-size:11px;letter-spacing:.8px;white-space:nowrap;width:84px;flex-shrink:0;}
+.parcel-popup-val{color:#c8d8e8;font-size:13px;}
 .parcel-popup-farm{color:#39ff14;font-weight:700;}
-.parcel-popup-loading{color:#4a5a6a;letter-spacing:2px;font-size:12px;padding:4px 0;}
+.parcel-popup-loading{color:#4a5a6a;letter-spacing:1.5px;font-size:12.5px;padding:4px 0;}
 
 /* ARN SEARCH PANEL */
 .search-panel{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:2000;
   background:var(--panel);border:1px solid var(--accent);border-radius:6px;
   padding:14px 16px;width:420px;max-width:95vw;box-shadow:0 0 30px rgba(0,229,255,.15);display:none;}
 .search-panel.show{display:block;}
-.search-panel h3{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;color:var(--accent);
-  letter-spacing:3px;margin-bottom:10px;}
+.search-panel h3{font-family:var(--font-ui);font-weight:700;font-size:14px;color:var(--accent);
+  letter-spacing:1px;margin-bottom:10px;}
 .search-input-row{display:flex;gap:6px;}
 .search-input{flex:1;background:var(--panel2);border:1px solid var(--border2);color:var(--text);
-  padding:7px 10px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;border-radius:3px;outline:none;}
+  padding:8px 11px;font-family:var(--font-mono);font-size:14px;border-radius:3px;outline:none;}
 .search-input:focus{border-color:var(--accent);}
 .search-btn{background:var(--panel2);border:1px solid var(--accent);color:var(--accent);
-  padding:7px 12px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;cursor:pointer;
-  border-radius:3px;letter-spacing:1px;white-space:nowrap;}
+  padding:8px 14px;font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer;
+  border-radius:3px;letter-spacing:.3px;white-space:nowrap;}
 .search-btn:hover{background:rgba(0,229,255,.1);}
 .search-results-list{margin-top:10px;max-height:220px;overflow-y:auto;}
 .search-results-list::-webkit-scrollbar{width:3px;}
@@ -266,24 +267,24 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 .search-result-item{padding:7px 9px;border-radius:3px;cursor:pointer;border:1px solid transparent;
   margin-bottom:3px;transition:all .15s;}
 .search-result-item:hover{background:rgba(0,229,255,.07);border-color:var(--border);}
-.search-result-arn{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;color:var(--accent);font-weight:700;}
-.search-result-addr{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;color:var(--muted);margin-top:2px;}
-.search-status{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;color:var(--muted);
-  margin-top:8px;text-align:center;letter-spacing:1px;}
+.search-result-arn{font-family:var(--font-mono);font-size:14px;color:var(--accent);font-weight:700;}
+.search-result-addr{font-family:var(--font-ui);font-size:12.5px;color:var(--muted);margin-top:2px;}
+.search-status{font-family:var(--font-ui);font-weight:600;font-size:12px;color:var(--muted);
+  margin-top:8px;text-align:center;letter-spacing:.3px;}
 
 .search-type-select{
   background:var(--panel2);border:1px solid var(--border2);color:var(--accent);
-  padding:6px 8px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;
-  border-radius:3px;outline:none;cursor:pointer;letter-spacing:.5px;
+  padding:7px 9px;font-family:var(--font-ui);font-weight:600;font-size:12.5px;
+  border-radius:3px;outline:none;cursor:pointer;letter-spacing:.2px;
   margin-bottom:8px;width:100%;
 }
 .search-type-select:focus{border-color:var(--accent);}
-.search-result-drain{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;color:#00bfff;font-weight:700;}
+.search-result-drain{font-family:var(--font-mono);font-size:14px;color:#00bfff;font-weight:700;}
 
 /* ROLL LABEL LAYER */
 .roll-label{
   background:transparent;border:none;
-  font-family:'Roboto Mono','Share Tech Mono',monospace;
+  font-family:var(--font-mono);
   font-size:12px;font-weight:700;
   color:#000;
   background:rgba(255,255,255,0.75);
@@ -299,24 +300,24 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 /* ── Drain search: municipality chip ── */
 .drain-muni{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:3px;
   background:rgba(0,229,255,.11);border:1px solid rgba(0,229,255,.3);color:var(--accent);
-  font-size:9px;font-weight:400;letter-spacing:.5px;vertical-align:middle;white-space:nowrap;}
+  font-family:var(--font-ui);font-size:10.5px;font-weight:600;letter-spacing:.4px;vertical-align:middle;white-space:nowrap;}
 .drain-muni.pending{background:transparent;border-color:var(--border2);color:var(--muted);opacity:.6;}
 /* ── Measure tool ── */
 .measure-card{position:absolute;bottom:34px;left:12px;background:var(--panel);
   border:1px solid var(--border2);border-left:3px solid var(--yellow);border-radius:8px;
   padding:9px 12px;min-width:186px;z-index:1200;display:none;
-  font-family:'Roboto Mono','Share Tech Mono',monospace;box-shadow:0 8px 24px rgba(0,0,0,.55);}
+  font-family:var(--font-ui);box-shadow:0 8px 24px rgba(0,0,0,.55);}
 .measure-card.show{display:block;}
 .measure-head{display:flex;align-items:center;gap:8px;margin-bottom:7px;}
-.measure-title{font-size:10px;letter-spacing:1.4px;color:var(--yellow);flex:1;}
-.measure-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;line-height:1;padding:0 1px;border-radius:3px;}
+.measure-title{font-size:12px;font-weight:700;letter-spacing:1.2px;color:var(--yellow);flex:1;}
+.measure-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;line-height:1;padding:0 1px;border-radius:3px;}
 .measure-x:hover{color:var(--accent2);}
 .measure-row{display:flex;align-items:baseline;gap:10px;margin:3px 0;}
-.measure-lbl{font-size:9px;color:var(--muted);letter-spacing:1px;width:52px;flex-shrink:0;}
-.measure-val{font-size:13px;color:var(--text);font-variant-numeric:tabular-nums;}
-.measure-hint{font-size:8px;color:var(--muted);margin-top:7px;line-height:1.5;opacity:.85;}
+.measure-lbl{font-size:10.5px;color:var(--muted);font-weight:600;letter-spacing:.6px;width:56px;flex-shrink:0;}
+.measure-val{font-family:var(--font-mono);font-size:14px;color:var(--text);font-variant-numeric:tabular-nums;}
+.measure-hint{font-size:10.5px;color:var(--muted);margin-top:7px;line-height:1.5;opacity:.85;}
 .measure-seg-lbl{background:transparent!important;border:none!important;box-shadow:none!important;
-  color:#ffd600;font-size:10px;font-family:'Roboto Mono',monospace;font-weight:bold;
+  color:#ffd600;font-size:11.5px;font-family:var(--font-mono);font-weight:bold;
   text-shadow:0 0 4px #000,0 0 8px #000;pointer-events:none;padding:0!important;}
 .measure-seg-lbl::before{display:none!important;}
 .leaflet-container.measuring{cursor:crosshair!important;}
@@ -325,14 +326,14 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 .progress-card{position:fixed;top:74px;left:50%;transform:translateX(-50%) translateY(-14px);
   background:var(--panel);border:1px solid var(--border2);border-left:3px solid var(--accent);
   border-radius:8px;padding:10px 14px;min-width:290px;max-width:min(430px,92vw);z-index:8000;
-  box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:'Roboto Mono','Share Tech Mono',monospace;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);font-family:var(--font-ui);
   opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;}
 .progress-card.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
 .progress-head{display:flex;align-items:center;gap:9px;margin-bottom:7px;}
-.progress-title{font-size:11px;letter-spacing:1.1px;color:var(--accent);flex:1;
+.progress-title{font-size:13px;font-weight:700;letter-spacing:.4px;color:var(--accent);flex:1;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.progress-pct{font-size:11px;color:var(--text);font-variant-numeric:tabular-nums;flex-shrink:0;}
-.progress-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;
+.progress-pct{font-family:var(--font-mono);font-size:12.5px;color:var(--text);font-variant-numeric:tabular-nums;flex-shrink:0;}
+.progress-x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;
   padding:0 1px;line-height:1;flex-shrink:0;border-radius:3px;}
 .progress-x:hover{color:var(--accent2);}
 .progress-x.hidden{display:none;}
@@ -341,10 +342,10 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
   border-radius:3px;transition:width .22s ease;}
 .progress-fill.indeterminate{width:38%;animation:progIndet 1.05s ease-in-out infinite;}
 @keyframes progIndet{0%{margin-left:-38%;}100%{margin-left:100%;}}
-.progress-detail{font-size:9px;color:var(--muted);margin-top:6px;line-height:1.5;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:11px;}
+.progress-detail{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:13px;}
 @media (max-width:768px){.progress-card{top:auto;bottom:74px;min-width:0;width:92vw;}}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel);border:1px solid var(--border2);border-left:3px solid var(--accent2);color:var(--accent2);padding:8px 18px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;border-radius:6px;z-index:9999;transition:transform .25s;letter-spacing:1px;box-shadow:0 6px 20px rgba(0,0,0,.45);}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--panel);border:1px solid var(--border2);border-left:3px solid var(--accent2);color:var(--accent2);padding:9px 18px;font-family:var(--font-ui);font-weight:600;font-size:13.5px;border-radius:6px;z-index:9999;transition:transform .25s;letter-spacing:.4px;box-shadow:0 6px 20px rgba(0,0,0,.45);}
 *::-webkit-scrollbar{width:8px;height:8px;}
 *::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px;}
 *::-webkit-scrollbar-thumb:hover{background:var(--muted);}
@@ -352,10 +353,10 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 .toast.show{transform:translateX(-50%) translateY(0);}
 .leaflet-container{background:#0b0e13;}
 .geohub-toggle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-.geohub-badge{font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;padding:2px 5px;border-radius:2px;letter-spacing:1px;}
+.geohub-badge{font-family:var(--font-ui);font-weight:700;font-size:11px;padding:2px 6px;border-radius:2px;letter-spacing:.6px;}
 
 /* Override leaflet.draw tooltip */
-.leaflet-draw-tooltip{background:var(--panel2)!important;border:1px solid var(--accent)!important;color:var(--text)!important;font-family:'Roboto Mono','Share Tech Mono',monospace!important;font-size:13px!important;}
+.leaflet-draw-tooltip{background:var(--panel2)!important;border:1px solid var(--accent)!important;color:var(--text)!important;font-family:var(--font-ui)!important;font-weight:600;font-size:13px!important;}
 .leaflet-draw-tooltip::before{border-right-color:var(--accent)!important;}
 
 /* TOKEN ONBOARDING MODAL */
@@ -369,34 +370,34 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
   background:var(--panel);border:1px solid var(--accent);border-radius:8px;
   padding:28px 30px;width:460px;max-width:95vw;
   box-shadow:0 0 60px rgba(0,229,255,.18);
-  font-family:'Roboto',sans-serif;
+  font-family:var(--font-ui);
 }
 .token-modal-logo{
-  font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:22px;
+  font-family:var(--font-mono);font-size:22px;
   color:var(--accent);letter-spacing:4px;margin-bottom:4px;
   text-shadow:0 0 20px rgba(0,229,255,.4);
 }
 .token-modal-logo span{color:var(--accent2);}
 .token-modal-sub{
-  font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;
-  color:var(--muted);letter-spacing:2px;margin-bottom:20px;
+  font-family:var(--font-ui);font-weight:600;font-size:12.5px;
+  color:var(--muted);letter-spacing:1.4px;margin-bottom:20px;
 }
 .token-modal h3{
-  font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:13px;
-  color:var(--accent);letter-spacing:2px;margin-bottom:12px;
+  font-family:var(--font-ui);font-weight:700;font-size:15px;
+  color:var(--accent);letter-spacing:.6px;margin-bottom:12px;
 }
-.token-modal p{font-size:14px;color:var(--text);line-height:1.5;margin-bottom:14px;}
+.token-modal p{font-size:14.5px;color:var(--text);line-height:1.55;margin-bottom:14px;}
 .token-modal-input{
   width:100%;background:var(--panel2);border:1px solid var(--border2);
-  color:var(--text);padding:10px 12px;font-family:'Roboto Mono','Share Tech Mono',monospace;
-  font-size:13px;border-radius:4px;outline:none;letter-spacing:.5px;
+  color:var(--text);padding:10px 12px;font-family:var(--font-mono);
+  font-size:13.5px;border-radius:4px;outline:none;letter-spacing:.5px;
   box-sizing:border-box;margin-bottom:10px;
   transition:border-color .15s;
 }
 .token-modal-input:focus{border-color:var(--accent);}
 .token-modal-steps{
-  font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;color:var(--muted);
-  line-height:1.8;margin-bottom:18px;
+  font-family:var(--font-ui);font-size:13px;color:var(--muted);
+  line-height:1.7;margin-bottom:18px;
   background:var(--panel2);border:1px solid var(--border);
   padding:10px 12px;border-radius:4px;
 }
@@ -406,8 +407,8 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 .token-modal-btns{display:flex;gap:8px;justify-content:flex-end;}
 .token-modal-btn{
   background:var(--panel2);border:1px solid var(--border2);color:var(--text);
-  padding:8px 18px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;
-  letter-spacing:1px;cursor:pointer;border-radius:4px;transition:all .15s;
+  padding:8px 18px;font-family:var(--font-ui);font-weight:700;font-size:13px;
+  letter-spacing:.4px;cursor:pointer;border-radius:4px;transition:all .15s;
 }
 .token-modal-btn.primary{
   border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);
@@ -419,10 +420,10 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 /* ── MOBILE RESPONSIVE ──────────────────────────────────── */
 @media (max-width: 768px){
   header{padding:6px 10px;gap:8px;}
-  .logo{font-size:13px;}
+  .logo{font-size:14px;}
   .tagline{display:none;}
   .header-btns{gap:4px;width:100%;order:3;justify-content:flex-start;}
-  .hbtn{font-size:10px;padding:4px 7px;}
+  .hbtn{font-size:11.5px;padding:4px 7px;}
   #lio-token-input{width:130px !important;}
 
   /* Sidebar + settings become overlay drawers instead of pushing the map */
@@ -441,20 +442,20 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
     left:0 !important;right:0 !important;bottom:0 !important;top:auto !important;
     width:100% !important;max-width:100% !important;transform:none !important;
     max-height:60vh !important;border-radius:12px 12px 0 0 !important;}
-  #swmhymoPanel table{font-size:10px;}
+  #swmhymoPanel table{font-size:11.5px;}
   #swmhymoPanel{overflow-x:auto;}
 
   #searchPanel,#drainSearchPanel,#addrSearchPanel,#shortRollPanel{
     left:8px !important;right:8px !important;width:auto !important;max-width:none !important;}
 
-  .coord-readout{font-size:10px;padding:3px 8px;}
+  .coord-readout{font-size:11.5px;padding:3px 8px;}
   .ag-layer-header{padding:8px 4px;}
   .basemap-btn,.tpbtn{min-height:34px;}
 }
 
 @media (max-width: 420px){
-  .logo{font-size:11px;letter-spacing:1px;}
-  .hbtn{font-size:9px;padding:3px 5px;}
+  .logo{font-size:12.5px;letter-spacing:.6px;}
+  .hbtn{font-size:10.5px;padding:3px 5px;}
   .header-btns{gap:3px;}
   #lio-token-input{width:90px !important;}
 }
@@ -560,7 +561,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <button class="hbtn" id="btnSoilAnalysis" onclick="querySoilAnalysis()" style="display:none;color:#ff6b35">📊 Soil HSG</button>
         <button class="hbtn" id="btnSWMHYMO" onclick="querySWMHYMO()" style="display:none;color:#84cc16">📋 Land Use</button>
         <div class="hmenu-lbl" id="landCoverLbl" style="display:none">Land cover source</div>
-        <select id="landCoverSrc" title="Land cover source for LAND USE table" style="display:none;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;padding:5px 7px;border-radius:4px;cursor:pointer;">
+        <select id="landCoverSrc" title="Land cover source for LAND USE table" style="display:none;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-ui);font-weight:600;font-size:12px;padding:5px 7px;border-radius:4px;cursor:pointer;">
           <option value="olc">OLC V1 (2020)</option>
         </select>
       </div>
@@ -584,16 +585,16 @@ document.addEventListener('DOMContentLoaded',function(){
   </div>
   <!-- TOKEN BAR -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:10px;background:var(--panel2);border:1px solid var(--border2);border-radius:4px;padding:4px 9px;flex-shrink:0;">
-    <span id="token-dot" style="font-size:9px;color:var(--muted);font-family:'Roboto Mono','Share Tech Mono',monospace;letter-spacing:1px;white-space:nowrap;">🔑 TOKEN</span>
+    <span id="token-dot" style="font-size:11px;color:var(--muted);font-family:var(--font-ui);font-weight:600;letter-spacing:.5px;white-space:nowrap;">🔑 TOKEN</span>
     <input id="lio-token-input" type="password" placeholder="Paste AgMaps token here…"
       oninput="updateTokenStatus()"
       style="width:220px;background:transparent;border:none;border-bottom:1px solid var(--border2);
-             color:var(--text);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;
-             padding:2px 4px;outline:none;letter-spacing:.5px;"
+             color:var(--text);font-family:var(--font-mono);font-size:11px;
+             padding:2px 4px;outline:none;letter-spacing:.3px;"
     />
-    <span id="token-status" style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;color:var(--muted);white-space:nowrap;">○ OFF</span>
+    <span id="token-status" style="font-family:var(--font-ui);font-weight:600;font-size:11px;color:var(--muted);white-space:nowrap;">○ OFF</span>
     <button onclick="clearToken()" title="Clear token"
-      style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:0 2px;line-height:1;">✕</button>
+      style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px;line-height:1;">✕</button>
   </div>
 </header>
 
@@ -604,11 +605,11 @@ document.addEventListener('DOMContentLoaded',function(){
     <div class="upload-zone" id="uploadZone">
       <input type="file" id="fileInput" accept="image/*,.heic,.heif" multiple>
       <span class="upload-icon">📡</span>
-      <p><strong>Drop photos here</strong><br>or click to browse<br><span style="font-size:9px">JPEG · HEIC · GPS EXIF data</span></p>
+      <p><strong>Drop photos here</strong><br>or click to browse<br><span style="font-size:11px;font-family:var(--font-ui)">JPEG · HEIC · GPS EXIF data</span></p>
     </div>
     <div class="section-title">// Photo Log</div>
     <div class="photo-list" id="photoList">
-      <div style="text-align:center;padding:16px;color:var(--muted);font-size:10px;font-family:'Roboto Mono','Share Tech Mono',monospace;letter-spacing:2px;">NO PHOTOS LOADED</div>
+      <div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;font-family:var(--font-ui);font-weight:600;letter-spacing:1.4px;">NO PHOTOS LOADED</div>
     </div>
   </div>
 
@@ -644,7 +645,7 @@ document.addEventListener('DOMContentLoaded',function(){
         </select>
         <textarea id="shortRollInput" class="search-input" rows="6"
           placeholder="Paste short form roll numbers, one per line&#10;e.g.&#10;001-13200&#10;002-45600"
-          style="width:100%;resize:vertical;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;padding:6px 8px;"></textarea>
+          style="width:100%;resize:vertical;font-family:var(--font-mono);font-size:13px;padding:6px 8px;"></textarea>
       </div>
       <div class="search-input-row">
         <button class="search-btn" onclick="runShortRollImport()" style="flex:1">⚡ QUERY PARCELS</button>
@@ -828,16 +829,16 @@ document.addEventListener('DOMContentLoaded',function(){
 
       <!-- ONTARIO AG LAYERS -->
       <div class="sg">
-        <div class="sg-title">// Ontario Ag Layers <span style="color:var(--muted);font-size:8px">· LIO/OMAFRA</span></div>
+        <div class="sg-title"><span class="sg-title-label">// Ontario Ag Layers</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· LIO/OMAFRA</span></div>
         <div id="agLayerList"></div>
-        <div style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:8px;color:var(--muted);margin-top:5px;line-height:1.5;padding:5px 7px;background:var(--panel2);border-radius:3px;border:1px solid var(--border);">
+        <div style="font-family:var(--font-ui);font-size:11px;color:var(--muted);margin-top:5px;line-height:1.5;padding:5px 7px;background:var(--panel2);border-radius:3px;border:1px solid var(--border);">
           ⚠ Data from Ontario AIA (AgMaps). Token required for ARN/parcel layers.
         </div>
       </div>
 
       <!-- GEOHUB BOUNDARY LAYERS -->
       <div class="sg">
-        <div class="sg-title">// GeoHub Boundaries <span style="color:var(--muted);font-size:8px">· Open Data · No Token</span></div>
+        <div class="sg-title"><span class="sg-title-label">// GeoHub Boundaries</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· Open Data · No Token</span></div>
         <div class="geohub-toggle">
           <div>
             <div class="slabel" style="color:#ff6b35">Geographic Townships</div>
@@ -856,7 +857,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
       <!-- FARM CLASS MAP LAYERS -->
       <div class="sg">
-        <div class="sg-title">// Farm Class Layers <span style="color:var(--muted);font-size:8px">· Requires Token</span></div>
+        <div class="sg-title"><span class="sg-title-label">// Farm Class Layers</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· Requires Token</span></div>
         <div class="geohub-toggle">
           <div>
             <div class="slabel" style="color:#39ff14">2024 Prog. Year · 2025 Tax Year</div>
@@ -887,10 +888,10 @@ document.addEventListener('DOMContentLoaded',function(){
 
       <!-- CUSTOM PARCEL SOURCE -->
       <div class="sg">
-        <div class="sg-title">// Custom Parcel Source <span style="color:var(--muted);font-size:8px">· County / Open Data</span></div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:7px;line-height:1.5">Override AgMaps with any ArcGIS Feature or Map Service. No token needed for open county services.</div>
+        <div class="sg-title"><span class="sg-title-label">// Custom Parcel Source</span><span style="order:3;flex-basis:100%;color:var(--muted);font-size:10.5px;font-family:var(--font-ui);letter-spacing:.2px;margin-top:2px;white-space:normal;">· County / Open Data</span></div>
+        <div style="font-size:12px;font-family:var(--font-ui);color:var(--muted);margin-bottom:7px;line-height:1.5">Override AgMaps with any ArcGIS Feature or Map Service. No token needed for open county services.</div>
         <select id="simcoeTownshipSelect" onchange="pickPresetParcel(this.value)"
-          style="width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;border-radius:3px;outline:none;margin-bottom:6px;cursor:pointer;box-sizing:border-box">
+          style="width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:var(--font-ui);font-weight:600;font-size:12px;border-radius:3px;outline:none;margin-bottom:6px;cursor:pointer;box-sizing:border-box">
           <option value="">⚡ Quick-fill: preset parcel service…</option>
           <optgroup label="Simcoe County (all 16 townships)">
             <option value="simcoe">Simcoe County — Assessment Parcels</option>
@@ -911,21 +912,21 @@ document.addEventListener('DOMContentLoaded',function(){
         </select>
         <div style="display:flex;gap:5px;margin-bottom:5px">
           <input id="gisServerInput" type="text"
-            style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;border-radius:3px;outline:none;letter-spacing:.3px;box-sizing:border-box"
+            style="flex:1;min-width:0;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:var(--font-mono);font-size:12px;border-radius:3px;outline:none;letter-spacing:.3px;box-sizing:border-box"
             placeholder="County GIS server, e.g. maps.county.ca">
-          <button onclick="scanGisServer()" style="padding:4px 9px;background:var(--panel2);border:1px solid rgba(0,229,255,.45);color:var(--accent);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;cursor:pointer;border-radius:3px;letter-spacing:.5px;white-space:nowrap">🔎 SCAN</button>
+          <button onclick="scanGisServer()" style="padding:4px 9px;background:var(--panel2);border:1px solid rgba(0,229,255,.45);color:var(--accent);font-family:var(--font-ui);font-weight:700;font-size:11.5px;cursor:pointer;border-radius:3px;letter-spacing:.3px;white-space:nowrap">🔎 SCAN</button>
         </div>
         <div id="gisScanResults" style="display:none;max-height:190px;overflow-y:auto;background:var(--panel2);border:1px solid var(--border2);border-radius:4px;padding:4px;margin-bottom:6px"></div>
         <input id="customParcelInput" type="text"
-          style="width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;border-radius:3px;outline:none;margin-bottom:6px;letter-spacing:.3px;box-sizing:border-box"
+          style="width:100%;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:5px 8px;font-family:var(--font-mono);font-size:12px;border-radius:3px;outline:none;margin-bottom:6px;letter-spacing:.3px;box-sizing:border-box"
           placeholder="https://…/FeatureServer or /MapServer"
           oninput="document.getElementById('customParcelStatus').textContent='';window._presetParcelLayer=null">
         <div style="display:flex;gap:5px;margin-bottom:5px">
-          <button onclick="testCustomParcelUrl()" style="flex:1;padding:4px 0;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;cursor:pointer;border-radius:3px;letter-spacing:.5px">TEST</button>
-          <button onclick="applyCustomParcelUrl()" style="flex:1;padding:4px 0;background:var(--panel2);border:1px solid rgba(57,255,20,.4);color:var(--green);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;cursor:pointer;border-radius:3px;letter-spacing:.5px">SET</button>
-          <button onclick="clearCustomParcelUrl()" style="flex:1;padding:4px 0;background:var(--panel2);border:1px solid rgba(255,107,53,.4);color:var(--accent2);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;cursor:pointer;border-radius:3px;letter-spacing:.5px">CLEAR</button>
+          <button onclick="testCustomParcelUrl()" style="flex:1;padding:4px 0;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-ui);font-weight:700;font-size:11.5px;cursor:pointer;border-radius:3px;letter-spacing:.3px">TEST</button>
+          <button onclick="applyCustomParcelUrl()" style="flex:1;padding:4px 0;background:var(--panel2);border:1px solid rgba(57,255,20,.4);color:var(--green);font-family:var(--font-ui);font-weight:700;font-size:11.5px;cursor:pointer;border-radius:3px;letter-spacing:.3px">SET</button>
+          <button onclick="clearCustomParcelUrl()" style="flex:1;padding:4px 0;background:var(--panel2);border:1px solid rgba(255,107,53,.4);color:var(--accent2);font-family:var(--font-ui);font-weight:700;font-size:11.5px;cursor:pointer;border-radius:3px;letter-spacing:.3px">CLEAR</button>
         </div>
-        <div id="customParcelStatus" style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;color:var(--muted);line-height:1.6;min-height:14px"></div>
+        <div id="customParcelStatus" style="font-family:var(--font-ui);font-weight:600;font-size:11px;color:var(--muted);line-height:1.6;min-height:14px"></div>
         <div class="srow" style="margin-top:8px">
           <div><div class="slabel" style="color:#ff9500">Show Parcels on Map</div><div class="ssub">Vector layer · click to identify</div></div>
           <label class="tog"><input type="checkbox" id="tog-custom-parcel" onchange="toggleCustomParcelLayer(this.checked)"><span class="tog-track"></span></label>
@@ -1169,7 +1170,7 @@ async function scanGisServer(){
     if(!hits.length){
       progressDone('⚠ NO PARCEL LAYERS FOUND — try the direct URL box below');
       box.style.display='block';
-      box.innerHTML='<div style="font-size:9px;color:var(--muted);padding:6px;line-height:1.6">'+
+      box.innerHTML='<div style="font-family:var(--font-ui);font-size:11.5px;color:var(--muted);padding:6px;line-height:1.6">'+
         'Scanned '+escHtml(String(budget.length))+' service'+(budget.length!==1?'s':'')+
         ' · nothing matched parcel/assessment/property.<br>The server may name things differently — '+
         'browse it directly: <a href="'+escHtml(base)+'" target="_blank" rel="noopener noreferrer" '+
@@ -1180,15 +1181,15 @@ async function scanGisServer(){
     // Render the hit list — click to load
     window._gisScanHits=hits;
     box.style.display='block';
-    box.innerHTML='<div style="font-size:8px;color:var(--muted);letter-spacing:1px;padding:3px 5px 5px">'+
+    box.innerHTML='<div style="font-family:var(--font-ui);font-weight:700;font-size:10.5px;color:var(--muted);letter-spacing:.6px;padding:3px 5px 5px">'+
       escHtml(String(hits.length))+' PARCEL LAYER'+(hits.length!==1?'S':'')+' FOUND · CLICK TO USE</div>'+
       hits.map((h,i)=>
         '<div onclick="useScannedParcel('+i+')" style="padding:5px 6px;border-radius:3px;cursor:pointer;'+
         'border-bottom:1px solid var(--border2)" onmouseover="this.style.background=\'rgba(0,229,255,.08)\'" '+
         'onmouseout="this.style.background=\'transparent\'">'+
-        '<div style="font-size:10px;color:var(--text)">'+escHtml(h.layerName)+
-        ' <span style="color:var(--muted);font-size:8px">· layer '+escHtml(String(h.layer))+'</span></div>'+
-        '<div style="font-size:8px;color:var(--muted);margin-top:1px;word-break:break-all">'+escHtml(h.svc)+'</div>'+
+        '<div style="font-family:var(--font-ui);font-size:12px;color:var(--text)">'+escHtml(h.layerName)+
+        ' <span style="color:var(--muted);font-size:10.5px">· layer '+escHtml(String(h.layer))+'</span></div>'+
+        '<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--muted);margin-top:1px;word-break:break-all">'+escHtml(h.svc)+'</div>'+
         '</div>').join('');
     progressDone('✓ FOUND '+hits.length+' PARCEL LAYER'+(hits.length!==1?'S':'')+' — click one to use');
   }catch(err){
@@ -1352,14 +1353,14 @@ function toggleCustomParcelLayer(enabled){
         const skipFields=new Set(['SHAPE','Shape','OBJECTID','Shape_Length','Shape_Area','GlobalID','GLOBALID']);
         const rows=Object.entries(a)
           .filter(([k,v])=>v!==null&&!skipFields.has(k))
-          .map(([k,v])=>`<div style="display:flex;gap:8px;padding:2px 0;border-bottom:1px solid #1e2a3a;font-size:10px">
+          .map(([k,v])=>`<div style="display:flex;gap:8px;padding:2px 0;border-bottom:1px solid #1e2a3a;font-size:12px">
             <span style="color:#7A9AB8;min-width:110px;flex-shrink:0">${escHtml(k)}</span>
             <span style="color:#E2EEF8;word-break:break-all">${escHtml(v)}</span>
           </div>`).join('');
         layer.bindPopup(
-          `<div style="font-family:'Roboto Mono',monospace;background:#111620;color:#E2EEF8;padding:8px;max-height:260px;overflow-y:auto;min-width:220px">
-            <div style="color:#ff9500;font-weight:700;font-size:12px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #263040">${escHtml(id)}</div>
-            ${rows||'<span style="color:var(--muted);font-size:10px">No attributes</span>'}
+          `<div style="font-family:var(--font-mono);background:#111620;color:#E2EEF8;padding:8px;max-height:260px;overflow-y:auto;min-width:220px">
+            <div style="color:#ff9500;font-weight:700;font-size:13px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #263040">${escHtml(id)}</div>
+            ${rows||'<span style="color:var(--muted);font-size:12px">No attributes</span>'}
           </div>`,
           {maxWidth:340,className:'parcel-popup-wrap'}
         );
@@ -1673,7 +1674,7 @@ function updatedBadge(dateStr){
   else if(days<730){ bg='rgba(255,214,0,.14)'; fg='var(--yellow)'; border='rgba(255,214,0,.4)'; }
   else{ bg='rgba(255,107,53,.16)'; fg='var(--accent2)'; border='rgba(255,107,53,.45)'; }
   const ageTxt=days<60?Math.max(0,Math.round(days/7))+'w ago':days<730?Math.round(days/30)+'mo ago':(days/365).toFixed(1)+'yr ago';
-  return `<span style="display:inline-block;margin-top:3px;padding:2px 7px;background:${bg};border:1px solid ${border};border-radius:3px;color:${fg};font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;letter-spacing:.5px;font-weight:700;white-space:nowrap">📅 Updated ${escHtml(dateStr)} · ${ageTxt}</span>`;
+  return `<span style="display:inline-block;margin-top:3px;padding:2px 7px;background:${bg};border:1px solid ${border};border-radius:3px;color:${fg};font-family:var(--font-ui);font-size:10.5px;letter-spacing:.3px;font-weight:700;white-space:nowrap">📅 Updated ${escHtml(dateStr)} · ${ageTxt}</span>`;
 }
 
 // ── Live "last updated" check — runs once per app launch, verified 2026-07-19 ──
@@ -1758,7 +1759,7 @@ function buildAgLayerUI(){
         ${l.legend?`<div style="margin-top:7px;border-top:1px solid var(--border);padding-top:6px;">
           ${l.legend.map(e=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px;">
             <span style="width:18px;height:3px;${e.dash?`border-top:2px dashed ${e.color};background:none`:`background:${e.color}`};display:inline-block;flex-shrink:0"></span>
-            <span style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;color:var(--text)">${e.label}</span>
+            <span style="font-family:var(--font-ui);font-size:11.5px;color:var(--text)">${e.label}</span>
           </div>`).join('')}
         </div>`:''}
         <div class="ag-source">${l.source?escHtml(l.source):`Layer ${l.layerIds.join('+')} · ${l.svcUrl?'Assessment_Parcel_Map':'AIA_Map'}`}
@@ -2562,7 +2563,7 @@ async function enrichWithQuery(parcels, token){
     // Safety net: after 25s convert any remaining spinners to —
     setTimeout(()=>{
       document.querySelectorAll('td[data-farm]').forEach(td=>{
-        if(td.textContent.includes('⟳')) td.innerHTML='<span style="color:var(--muted);font-size:9px">—</span>';
+        if(td.textContent.includes('⟳')) td.innerHTML='<span style="color:var(--muted);font-size:13px">—</span>';
       });
     }, 25000);
 
@@ -2645,7 +2646,7 @@ async function enrichFarmClass(parcels, token){
 function markAllFarm(parcels,f25,f26){
   parcels.forEach((_,idx)=>{
     const fc=document.querySelector('td[data-farm="'+idx+'"]');
-    if(fc) fc.innerHTML=f25===null?'<span style="color:var(--muted);font-size:9px">—</span>':farmBadgeHtml(f25,f26);
+    if(fc) fc.innerHTML=f25===null?'<span style="color:var(--muted);font-size:13px">—</span>':farmBadgeHtml(f25,f26);
   });
 }
 
@@ -2944,7 +2945,7 @@ async function queryFallback(latlngs, originalError){
       renderResults(parcelData);
       // Append note about missing ARN data
       const note=document.createElement('div');
-      note.style.cssText="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;color:var(--yellow);padding:6px 14px;border-top:1px solid var(--border);";
+      note.style.cssText="font-family:var(--font-ui);font-weight:600;font-size:11.5px;color:var(--yellow);padding:6px 14px;border-top:1px solid var(--border);";
       note.innerHTML='⚠ Fallback mode — lot fabric only. <b style="color:var(--accent)">Add AgMaps token in Settings</b> for roll numbers, addresses &amp; farm class.';
       document.getElementById('resultsTableWrap').after(note);
     }
@@ -2966,12 +2967,12 @@ async function queryFallback(latlngs, originalError){
 
 
 function farmBadgeHtml(f25,f26){
-  if(f25===null&&f26===null) return '<span style="color:var(--muted);font-size:9px">—</span>';
+  if(f25===null&&f26===null) return '<span style="color:var(--muted);font-size:13px">—</span>';
   const either=f25||f26;
-  if(!either) return '<span style="color:var(--muted);font-size:9px;letter-spacing:1px">NO</span>';
+  if(!either) return '<span style="color:var(--muted);font-family:var(--font-ui);font-weight:600;font-size:11px;letter-spacing:.6px">NO</span>';
   const parts=[];
-  if(f25) parts.push('<span style="color:#39ff14;background:rgba(57,255,20,.12);border:1px solid rgba(57,255,20,.3);padding:1px 6px;border-radius:2px;font-size:8px;letter-spacing:.5px;white-space:nowrap">2024 Prog · 2025 Tax</span>');
-  if(f26) parts.push('<span style="color:#ffd600;background:rgba(255,214,0,.1);border:1px solid rgba(255,214,0,.3);padding:1px 6px;border-radius:2px;font-size:8px;letter-spacing:.5px;white-space:nowrap">2025 Prog · 2026 Tax</span>');
+  if(f25) parts.push('<span style="color:#39ff14;background:rgba(57,255,20,.12);border:1px solid rgba(57,255,20,.3);padding:1px 6px;border-radius:2px;font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.2px;white-space:nowrap">2024 Prog · 2025 Tax</span>');
+  if(f26) parts.push('<span style="color:#ffd600;background:rgba(255,214,0,.1);border:1px solid rgba(255,214,0,.3);padding:1px 6px;border-radius:2px;font-family:var(--font-ui);font-weight:700;font-size:10.5px;letter-spacing:.2px;white-space:nowrap">2025 Prog · 2026 Tax</span>');
   return parts.join(' ');
 }
 
@@ -3006,13 +3007,13 @@ function renderResults(data){
     tbody+=`<tr onclick="selectParcelRow(${i})" style="cursor:pointer">`;
     tbody+=`<td style="color:var(--muted)">${i+1}</td>`;
     tbody+=`<td style="color:var(--accent);font-weight:700">${escHtml(r.roll)||'—'}</td>`;
-    tbody+=`<td data-addr="${i}" style="color:var(--muted);font-size:9px">${escHtml(r.address)||'⟳ geocoding…'}</td>`;
+    tbody+=`<td data-addr="${i}" style="color:var(--muted);font-size:13px">${escHtml(r.address)||'⟳ geocoding…'}</td>`;
     tbody+=`<td data-township="${i}">${escHtml(r.township)||'—'}</td>`;
     tbody+=`<td data-muni="${i}" style="color:var(--muted)">${escHtml(r.municipality)||'—'}</td>`;
     tbody+=`<td data-lot="${i}" style="color:var(--muted)">${escHtml(r.lot)||'⟳'}</td>`;
     tbody+=`<td data-conc="${i}" style="color:var(--muted)">${escHtml(r.concession)||'⟳'}</td>`;
-    if(hasConservation) tbody+=`<td style="color:var(--muted);font-size:9px">${escHtml(shortCA(r.conservation))}</td>`;
-    tbody+=`<td data-farm="${i}">${(r.farm2025!==undefined||r.farm2026!==undefined)?farmBadgeHtml(r.farm2025,r.farm2026):'<span style="color:var(--muted);font-size:9px">⟳</span>'}</td>`;
+    if(hasConservation) tbody+=`<td style="color:var(--muted);font-size:13px">${escHtml(shortCA(r.conservation))}</td>`;
+    tbody+=`<td data-farm="${i}">${(r.farm2025!==undefined||r.farm2026!==undefined)?farmBadgeHtml(r.farm2025,r.farm2026):'<span style="color:var(--muted);font-size:13px">⟳</span>'}</td>`;
     tbody+='</tr>';
   });
 
@@ -3293,10 +3294,10 @@ function addMarker(photo,idx){
   const icon=L.divIcon({html:svg,className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]});
   const marker=L.marker([photo.lat,photo.lng],{icon}).addTo(map).on('click',()=>selectPhoto(idx));
   const hd=photo.dir!==null&&!isNaN(photo.dir);
-  marker.bindPopup(`<div style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:11px;background:#111620;color:#c8d8e8;border:1px solid #1e2a3a;padding:8px;border-radius:4px;min-width:170px">
+  marker.bindPopup(`<div style="font-family:var(--font-ui);font-size:13px;background:#111620;color:#c8d8e8;border:1px solid #1e2a3a;padding:8px;border-radius:4px;min-width:170px">
     <img src="${photo.dataUrl}" alt="Field photo ${escHtml(photo.name)}" loading="lazy" style="width:100%;height:90px;object-fit:cover;border-radius:2px;margin-bottom:6px;display:block;border:1px solid #1e2a3a">
     <b style="color:${markerColor}">${escHtml(photo.name)}</b><br>
-    <span style="color:#4a5a6a">${photo.lat.toFixed(5)}, ${photo.lng.toFixed(5)}</span><br>
+    <span style="font-family:var(--font-mono);color:#4a5a6a">${photo.lat.toFixed(5)}, ${photo.lng.toFixed(5)}</span><br>
     <span style="color:#ff6b35">${hd?photo.dir.toFixed(1)+'° '+degCompass(photo.dir):'Dir: N/A'}</span>
     ${photo.alt?`<br><span style="color:#4a5a6a">Alt: ${photo.alt.toFixed(0)} m</span>`:''}
     ${photo.date?`<br><span style="color:#4a5a6a">${photo.date}</span>`:''}
@@ -3321,7 +3322,7 @@ function degCompass(d){return['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW
 // ═══════════════════════════════════════════════════
 function renderList(){
   const list=document.getElementById('photoList');
-  if(!photos.length){list.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:10px;font-family:\'Share Tech Mono\',monospace;letter-spacing:2px;">NO PHOTOS LOADED</div>';return;}
+  if(!photos.length){list.innerHTML='<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;font-family:var(--font-ui);font-weight:600;letter-spacing:1.4px;">NO PHOTOS LOADED</div>';return;}
   list.innerHTML=photos.map((p,i)=>{
     const ok=p.lat!==null,dir=p.dir!==null&&!isNaN(p.dir);
     return`<div class="photo-item ${!ok?'no-gps':''} ${activeIdx===i?'active':''}" onclick="selectPhoto(${i})">
@@ -3618,7 +3619,7 @@ function showToast(msg){
 }
 
 const ps=document.createElement('style');
-ps.textContent='.dark-popup .leaflet-popup-content-wrapper{background:transparent;border:none;box-shadow:none;padding:0}.dark-popup .leaflet-popup-tip-container{display:none}.dark-popup .leaflet-popup-content{margin:0}.ws-tooltip{background:#111620;border:1px solid #c850ff;color:#c8d8e8;font-family:Roboto Mono,Share Tech Mono,monospace;font-size:10px;letter-spacing:.5px;border-radius:3px;padding:3px 8px;box-shadow:0 0 10px rgba(200,80,255,.2)}.ws-tooltip::before{display:none}.lot-lbl{background:transparent!important;border:none!important;box-shadow:none!important;color:#ffd600;font-size:9px;font-family:Roboto Mono,Share Tech Mono,monospace;font-weight:bold;text-align:center;pointer-events:none;padding:0!important;text-shadow:0 0 4px #000,0 0 8px #000,0 1px 2px #000;line-height:1.3}.lot-lbl::before{display:none!important}';
+ps.textContent='.dark-popup .leaflet-popup-content-wrapper{background:transparent;border:none;box-shadow:none;padding:0}.dark-popup .leaflet-popup-tip-container{display:none}.dark-popup .leaflet-popup-content{margin:0}.ws-tooltip{background:#111620;border:1px solid #c850ff;color:#c8d8e8;font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;border-radius:3px;padding:3px 8px;box-shadow:0 0 10px rgba(200,80,255,.2)}.ws-tooltip::before{display:none}.lot-lbl{background:transparent!important;border:none!important;box-shadow:none!important;color:#ffd600;font-size:10px;font-family:var(--font-mono);font-weight:bold;text-align:center;pointer-events:none;padding:0!important;text-shadow:0 0 4px #000,0 0 8px #000,0 1px 2px #000;line-height:1.3}.lot-lbl::before{display:none!important}';
 document.head.appendChild(ps);
 
 // ═══════════════════════════════════════════════════
@@ -3733,7 +3734,7 @@ async function onCrosshairClick(e){
     // Update popup with ARN immediately
     crosshairPopup.setContent(`<div class="parcel-popup-wrap">
       <div class="parcel-popup-arn">ARN: ${arn}</div>
-      <div class="parcel-popup-loading" style="font-size:9px">⟳ loading details…</div>
+      <div class="parcel-popup-loading">⟳ loading details…</div>
     </div>`);
 
     // Step 2: fire all enrichment sources in parallel — same sources as table
@@ -3829,10 +3830,10 @@ async function onCrosshairClick(e){
       <div class="parcel-popup-row"><span class="parcel-popup-lbl">LOT</span><span class="parcel-popup-val">${escHtml(lotStr)}</span></div>
       <div class="parcel-popup-row"><span class="parcel-popup-lbl">CONCESSION</span><span class="parcel-popup-val">${escHtml(concStr)}</span></div>
       <div class="parcel-popup-row"><span class="parcel-popup-lbl">FARM CLASS</span><span class="parcel-popup-val" style="color:${isFarm25?'#39ff14':'var(--muted)'}">${isFarm25?'2024 Prog · 2025 Tax':'—'}</span></div>
-      ${simcoeRows?`<div style="margin-top:6px;border-top:1px solid #1e2a3a;padding-top:6px;"><div style="font-size:8px;color:#ff66cc;letter-spacing:1px;margin-bottom:3px">◆ SIMCOE / ORO-MEDONTE</div>${simcoeRows}</div>`:''}
+      ${simcoeRows?`<div style="margin-top:6px;border-top:1px solid #1e2a3a;padding-top:6px;"><div style="font-family:var(--font-ui);font-weight:700;font-size:10.5px;color:#ff66cc;letter-spacing:.6px;margin-bottom:3px">◆ SIMCOE / ORO-MEDONTE</div>${simcoeRows}</div>`:''}
       <div style="margin-top:8px;border-top:1px solid #1e2a3a;padding-top:6px;display:flex;gap:8px;">
-        <span style="font-size:8px;color:#4a5a6a;cursor:pointer;" onclick="navigator.clipboard.writeText('${escHtml(arn)}');showToast('ARN COPIED')">📋 COPY ARN</span>
-        <span style="font-size:8px;color:#4a5a6a;cursor:pointer;" onclick="document.getElementById('searchInput').value='${escHtml(arn)}';toggleSearchPanel();runSearch()">🔍 SEARCH</span>
+        <span style="font-family:var(--font-ui);font-weight:600;font-size:11px;color:#4a5a6a;cursor:pointer;" onclick="navigator.clipboard.writeText('${escHtml(arn)}');showToast('ARN COPIED')">📋 COPY ARN</span>
+        <span style="font-family:var(--font-ui);font-weight:600;font-size:11px;color:#4a5a6a;cursor:pointer;" onclick="document.getElementById('searchInput').value='${escHtml(arn)}';toggleSearchPanel();runSearch()">🔍 SEARCH</span>
       </div>
     </div>`);
 
@@ -4148,20 +4149,20 @@ function showDrainResults(drains){
   panel.style.cssText=`position:fixed;bottom:20px;right:20px;width:340px;max-height:420px;background:var(--panel);border:1px solid var(--border);border-radius:8px;z-index:9000;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,.5)`;
 
   const header=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
-    <span style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:#ff6b35;letter-spacing:1px">💧 DRAINS IN BOUNDARY <span style="color:var(--muted)">(${drains.length})</span></span>
-    <span style="cursor:pointer;color:var(--muted);font-size:16px" onclick="document.getElementById('drainResultsPanel').remove()">✕</span>
+    <span style="font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:#ff6b35;letter-spacing:.4px">💧 DRAINS IN BOUNDARY <span style="color:var(--muted)">(${drains.length})</span></span>
+    <span style="cursor:pointer;color:var(--muted);font-size:17px" onclick="document.getElementById('drainResultsPanel').remove()">✕</span>
   </div>`;
 
   const rows=drains.map((d,i)=>`
     <div style="padding:7px 14px;border-bottom:1px solid var(--border2);cursor:pointer;transition:background .15s"
       onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''"
       onclick="runDrainSearchFromName(${escHtml(JSON.stringify(d.name))})">
-      <div style="font-size:12px;color:var(--text);font-weight:500">${escHtml(d.name)}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px">${d.type!=='—'?escHtml(d.type)+' · ':''}${escHtml(d.muni)}</div>
+      <div style="font-family:var(--font-ui);font-size:13.5px;color:var(--text);font-weight:500">${escHtml(d.name)}</div>
+      <div style="font-family:var(--font-ui);font-size:12px;color:var(--muted);margin-top:2px">${d.type!=='—'?escHtml(d.type)+' · ':''}${escHtml(d.muni)}</div>
     </div>`).join('');
 
   const copyBtn=`<div style="padding:8px 14px;border-top:1px solid var(--border);flex-shrink:0">
-    <button onclick="copyDrainNames()" style="width:100%;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:11px;cursor:pointer;font-family:'Roboto Mono','Share Tech Mono',monospace;letter-spacing:.5px">⧉ COPY ALL DRAIN NAMES</button>
+    <button onclick="copyDrainNames()" style="width:100%;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600;letter-spacing:.3px">⧉ COPY ALL DRAIN NAMES</button>
   </div>`;
 
   panel.innerHTML=header+`<div style="overflow-y:auto;flex:1">${rows}</div>`+copyBtn;
@@ -4727,15 +4728,15 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
   const grandTotal=HSG_ROWS.reduce((s,hsg)=>s+rowTotals[hsg],0);
 
   const thS=`padding:7px 10px;font-size:11px;font-weight:600;text-align:center;border:1px solid var(--border);background:var(--panel2);color:var(--text)`;
-  const tdS=`padding:6px 10px;font-size:11px;text-align:center;border:1px solid var(--border2)`;
-  const tdY=`padding:6px 10px;font-size:11px;text-align:center;border:1px solid var(--border2);background:rgba(234,179,8,0.08)`;
+  const tdS=`padding:6px 10px;font-size:12.5px;text-align:center;border:1px solid var(--border2)`;
+  const tdY=`padding:6px 10px;font-size:12.5px;text-align:center;border:1px solid var(--border2);background:rgba(234,179,8,0.08)`;
 
   const t1Header=`<tr>
     <th rowspan="2" style="${thS};background:#1a2535;vertical-align:middle">HSG</th>
     <th colspan="${SWMHYMO_LU.length}" style="${thS}">Total Area per Land Use (ha)</th>
     <th rowspan="2" style="${thS};background:#1a2535;vertical-align:middle">Row Total</th>
   </tr>
-  <tr>${SWMHYMO_LU.map(lu=>`<th style="${thS};font-size:10px;font-weight:500;color:#00e5ff">${lu}</th>`).join('')}</tr>`;
+  <tr>${SWMHYMO_LU.map(lu=>`<th style="${thS};font-size:11.5px;font-weight:600;color:#00e5ff">${lu}</th>`).join('')}</tr>`;
 
   const t1Data=HSG_ROWS.map(hsg=>{
     const cells=SWMHYMO_LU.map(lu=>{
@@ -4757,7 +4758,7 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
   </tr>`;
 
   // ── Table 2: Composite Runoff Coefficient — areas from OLC, C from standards ──
-  const ctS=`padding:4px 8px;font-size:10px;text-align:center;border:1px solid var(--border2)`;
+  const ctS=`padding:4px 8px;font-size:11.5px;text-align:center;border:1px solid var(--border2)`;
   const C_ROW_TO_OLC={};
   Object.entries(OLC_TO_C_ROW).forEach(([lu,ri])=>{ C_ROW_TO_OLC[ri]=lu; });
 
@@ -4765,7 +4766,7 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
     <tr>
       <th style="${ctS};text-align:left;background:var(--panel2);color:var(--text);font-size:11px" colspan="${HSG_ROWS.length+1}">
         Composite Runoff Coefficient
-        <span style="color:var(--muted);font-weight:400;font-size:9px"> — areas from OLC analysis · C values from Ontario SWMHYMO defaults · hover cell for C</span>
+        <span style="color:var(--muted);font-weight:400;font-size:11px"> — areas from OLC analysis · C values from Ontario SWMHYMO defaults · hover cell for C</span>
       </th>
     </tr>
     <tr>
@@ -4786,7 +4787,7 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
     }).join('');
     return `<tr>
       <td style="${ctS};text-align:left;background:var(--panel2);color:var(--text)">
-        ${row[0]}<span style="font-size:9px;color:var(--muted);margin-left:5px">${cLabel}</span>
+        ${row[0]}<span style="font-size:11px;color:var(--muted);margin-left:5px">${cLabel}</span>
       </td>${cells}</tr>`;
   }).join('');
 
@@ -4811,17 +4812,17 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
   panel.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
       <div>
-        <div style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:#38bdf8;letter-spacing:1px">📋 LAND USE AREAS</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">Boundary: ${boundaryHa.toFixed(1)} ha · ${source||'OLC V1 2020'} × OMAFRA HSG</div>
+        <div style="font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:#38bdf8;letter-spacing:.4px">📋 LAND USE AREAS</div>
+        <div style="font-family:var(--font-ui);font-size:12px;color:var(--muted);margin-top:2px">Boundary: ${boundaryHa.toFixed(1)} ha · ${source||'OLC V1 2020'} × OMAFRA HSG</div>
       </div>
-      <span style="cursor:pointer;color:var(--muted);font-size:16px" onclick="document.getElementById('swmhymoPanel').remove()">✕</span>
+      <span style="cursor:pointer;color:var(--muted);font-size:17px" onclick="document.getElementById('swmhymoPanel').remove()">✕</span>
     </div>
     <div style="overflow:auto;flex:1;padding:12px 16px">
       <table style="width:100%;border-collapse:collapse;margin-bottom:18px">${t1Header}${t1Data}${t1Footer}</table>
       <table style="width:100%;border-collapse:collapse;margin-bottom:14px">${t2Header}${t2Data}</table>
-      <div style="margin-top:10px;font-size:10px;color:var(--muted)">
+      <div style="margin-top:10px;font-family:var(--font-ui);font-size:12px;color:var(--muted)">
         Note: OLC V1 2020 · 150×150 pixel sample · Real OLC×HSG spatial intersection
-        <table style="width:100%;border-collapse:collapse;margin-top:10px;font-size:10px">
+        <table style="width:100%;border-collapse:collapse;margin-top:10px;font-family:var(--font-ui);font-size:12px">
           <tr style="background:var(--panel2)">
             <th style="padding:4px 8px;text-align:left;color:var(--muted);border:1px solid var(--border2)">Colour</th>
             <th style="padding:4px 8px;text-align:left;color:var(--muted);border:1px solid var(--border2)">OLC Class</th>
@@ -4865,9 +4866,9 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
       </div>
     </div>
     <div style="padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
-      <button onclick="exportSWMHYMOcsv()" style="padding:6px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:#38bdf8;font-size:11px;cursor:pointer;font-family:'Roboto Mono','Share Tech Mono',monospace">⬇ CSV</button>
-      <button onclick="exportValidationDXF()" style="padding:6px 14px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:4px;color:#ffd600;font-size:11px;cursor:pointer;font-family:'Roboto Mono','Share Tech Mono',monospace;white-space:nowrap">📐 VALIDATION DXF</button>
-      <div style="flex:1;font-size:10px;color:var(--muted);display:flex;align-items:center">Source: ${source||'Ontario Land Cover V1'} × OMAFRA Soil Survey Complex</div>
+      <button onclick="exportSWMHYMOcsv()" style="padding:6px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:#38bdf8;font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600">⬇ CSV</button>
+      <button onclick="exportValidationDXF()" style="padding:6px 14px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:4px;color:#ffd600;font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600;white-space:nowrap">📐 VALIDATION DXF</button>
+      <div style="flex:1;font-family:var(--font-ui);font-size:11.5px;color:var(--muted);display:flex;align-items:center">Source: ${source||'Ontario Land Cover V1'} × OMAFRA Soil Survey Complex</div>
     </div>`;
 
   window._swmhymoCsv=csvLines;
@@ -5161,7 +5162,7 @@ function showSoilResults(hsgTotals,soilNameTotals,boundaryHa,hsgField,soilNameFi
       </div>`;
     }).join('');
   } else {
-    soilRows=`<div style="padding:10px 14px;font-size:10px;color:var(--muted);font-family:'Roboto Mono','Share Tech Mono',monospace;letter-spacing:.5px">No soil series name field detected in layer data.</div>`;
+    soilRows=`<div style="padding:10px 14px;font-size:12px;color:var(--muted);font-family:var(--font-ui);letter-spacing:.2px">No soil series name field detected in layer data.</div>`;
   }
 
   const coveragePct=(totalAnalysed/boundaryHa*100).toFixed(0);
@@ -5169,20 +5170,20 @@ function showSoilResults(hsgTotals,soilNameTotals,boundaryHa,hsgField,soilNameFi
   panel.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
       <div>
-        <div style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:12px;color:#ff6b35;letter-spacing:1px">📊 SOIL ANALYSIS</div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px">Boundary: ${boundaryHa.toFixed(1)} ha · Coverage: ~${coveragePct}% · Layer 27</div>
+        <div style="font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:#ff6b35;letter-spacing:.4px">📊 SOIL ANALYSIS</div>
+        <div style="font-family:var(--font-ui);font-size:12px;color:var(--muted);margin-top:2px">Boundary: ${boundaryHa.toFixed(1)} ha · Coverage: ~${coveragePct}% · Layer 27</div>
       </div>
-      <span style="cursor:pointer;color:var(--muted);font-size:16px" onclick="document.getElementById('soilResultsPanel').remove()">✕</span>
+      <span style="cursor:pointer;color:var(--muted);font-size:17px" onclick="document.getElementById('soilResultsPanel').remove()">✕</span>
     </div>
     <div style="overflow-y:auto;flex:1">
-      <div style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;padding:5px 14px 3px;background:var(--panel2)">HYDROLOGIC SOIL GROUP</div>
+      <div style="font-family:var(--font-ui);font-weight:700;font-size:11px;color:var(--accent);letter-spacing:1.4px;padding:5px 14px 3px;background:var(--panel2)">HYDROLOGIC SOIL GROUP</div>
       ${hsgRows}
-      <div style="font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;color:var(--accent);letter-spacing:2px;padding:5px 14px 3px;background:var(--panel2);border-top:1px solid var(--border)">SOIL SERIES${soilNameField?' · '+(window._soilNameFields||[soilNameField]).join(' + '):''}</div>
+      <div style="font-family:var(--font-ui);font-weight:700;font-size:11px;color:var(--accent);letter-spacing:1.4px;padding:5px 14px 3px;background:var(--panel2);border-top:1px solid var(--border)">SOIL SERIES${soilNameField?' · '+(window._soilNameFields||[soilNameField]).join(' + '):''}</div>
       ${soilRows}
     </div>
     <div style="padding:8px 14px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:6px;align-items:center">
-      <button onclick="exportSoilDXF()" style="padding:5px 11px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:3px;color:#ffd600;font-size:10px;cursor:pointer;font-family:'Roboto Mono','Share Tech Mono',monospace;letter-spacing:.5px;white-space:nowrap">📐 EXPORT SOIL DXF</button>
-      <div style="flex:1;font-size:9px;color:var(--muted)">Source: OMAFRA Soil Survey Complex</div>
+      <button onclick="exportSoilDXF()" style="padding:5px 11px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:3px;color:#ffd600;font-size:12px;cursor:pointer;font-family:var(--font-ui);font-weight:600;letter-spacing:.2px;white-space:nowrap">📐 EXPORT SOIL DXF</button>
+      <div style="flex:1;font-family:var(--font-ui);font-size:11px;color:var(--muted)">Source: OMAFRA Soil Survey Complex</div>
     </div>`;
 
   enhancePanel(panel);
@@ -5576,7 +5577,7 @@ function renderDrainResults(results, raw, statusEl, listEl){
       : `<span class="drain-muni pending" data-muni-slot="${i}">locating…</span>`;
     item.innerHTML=
       `<div class="search-result-drain">${escHtml(name)}${chip}`+
-        (isDup?`<span style="color:var(--muted);font-weight:400;font-size:9px;margin-left:6px">#${byName[name].indexOf(i)+1} of ${byName[name].length}</span>`:'')+
+        (isDup?`<span style="color:var(--muted);font-family:var(--font-ui);font-weight:600;font-size:11px;margin-left:6px">#${byName[name].indexOf(i)+1} of ${byName[name].length}</span>`:'')+
       `</div>`+
       `<div class="search-result-addr">${escHtml(sub)}</div>`;
 
@@ -6994,17 +6995,17 @@ function showTileHint(tiles, zone){
     box.id='tileHintBox';
     box.style.cssText='position:absolute;bottom:60px;left:50%;transform:translateX(-50%);z-index:3000;'+
       'background:var(--panel);border:1px solid #c8a25a;border-radius:6px;padding:12px 16px;'+
-      'font-family:\'Roboto Mono\',monospace;font-size:12px;color:var(--text);max-width:90vw;'+
+      'font-family:var(--font-mono);font-size:13px;color:var(--text);max-width:90vw;'+
       'box-shadow:0 4px 20px rgba(0,0,0,.5);';
     document.body.appendChild(box);
   }
   const names=tiles.map(t=>escHtml(t)).join('<br>');
   box.innerHTML=`<div style="color:#c8a25a;letter-spacing:1px;margin-bottom:6px;font-weight:700">⛰ DOWNLOAD THESE TILE(S) — UTM ${zone}N</div>`+
     `<div style="line-height:1.7;color:var(--accent)">${names}</div>`+
-    `<div style="color:var(--muted);font-size:10px;margin-top:8px;line-height:1.5">In the download list, find the file starting with the code above<br>`+
+    `<div style="color:var(--muted);font-family:var(--font-ui);font-size:11.5px;margin-top:8px;line-height:1.5">In the download list, find the file starting with the code above<br>`+
     `(the numbers after "1km" are the tile's UTM corner; a year like "2018" follows).<br>`+
     `<span style="color:var(--green)">✓ Tile code(s) copied to clipboard.</span></div>`+
-    `<div style="text-align:right;margin-top:6px"><span onclick="document.getElementById('tileHintBox').remove()" style="cursor:pointer;color:var(--muted);font-size:10px">✕ dismiss</span></div>`;
+    `<div style="text-align:right;margin-top:6px"><span onclick="document.getElementById('tileHintBox').remove()" style="cursor:pointer;color:var(--muted);font-family:var(--font-ui);font-weight:600;font-size:11.5px">✕ dismiss</span></div>`;
 }
 
 
