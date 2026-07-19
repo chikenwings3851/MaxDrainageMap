@@ -1532,6 +1532,18 @@ const AG_LAYERS=[
     {color:'#c8c8c8',label:'Urban / Built-up'},
     {color:'#e8e8e8',label:'Barren / Exposed'},
   ]},
+  {id:'essex_drains', name:'Drains (Essex County)', icon:'💧',desc:'Legal/municipal drains under the Drainage Act, mapped directly by the County of Essex — same idea as the province-wide Municipal Drains layer above, but this is the county\'s own, more locally-maintained dataset for its area.', color:'#00bfff',layerIds:[],svcUrl:'essex_drains',minZoom:10,opacity:.85,
+    source:'County of Essex public GIS server (coe_water service, "Drainage" sublayer, has a DRAIN_NAME field), verified 2026-07-19. No token needed. No published last-updated date for this specific sublayer.',
+    sourceUrl:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/coe_water/MapServer/4',
+    infoUrl:'https://www.countyofessex.ca/discover-the-county/maps/'},
+  {id:'cw_storm',  name:'Storm Sewer (Centre Wellington)', icon:'🌧️',desc:'Storm sewer network for Centre Wellington (Fergus/Elora) — outfalls, catch basins, maintenance holes, laterals and conveyance channels — rendered with the township\'s own utility symbology.', color:'#4488ff',layerIds:[],svcUrl:'cw_storm',minZoom:13,opacity:1,
+    source:'Township of Centre Wellington public GIS server (AM_Storm_Sewer service), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+    sourceUrl:'https://gis.centrewellington.ca/server/rest/services/AM_Storm_Sewer/MapServer',
+    infoUrl:'http://www.centrewellington.ca/township-services/maps/'},
+  {id:'cw_airphoto', name:'2023 Airphoto 7.5cm (Centre Wellington)', icon:'🛰',desc:'High-resolution (7.5cm/pixel) orthophoto covering Centre Wellington (Fergus/Elora), flown 2023 — noticeably sharper than the province-wide basemap imagery, useful for site-level detail in that area.', color:'#00e5ff',layerIds:[],svcUrl:'cw_airphoto',minZoom:13,opacity:1,
+    source:'Township of Centre Wellington public GIS server (Airphoto2023_7_5cm_dynamic ImageServer), verified 2026-07-19. No token needed. No published last-updated date beyond the 2023 flight year in the service name.',
+    sourceUrl:'https://gis.centrewellington.ca/server/rest/services/Airphoto2023_7_5cm_dynamic/ImageServer',
+    infoUrl:'http://www.centrewellington.ca/township-services/maps/'},
 ];
 
 const agLayerInstances={};
@@ -1961,6 +1973,47 @@ function toggleAgLayer(id,enabled){
       layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: ORO-MEDONTE PARCELS');});
       layer.addTo(map);
       agLayerInstances[id]=layer;
+      return;
+    }
+    if(id==='essex_drains'){
+      const fl=L.esri.featureLayer({
+        url:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/coe_water/MapServer/4',
+        simplifyFactor:0.3, precision:5,
+        style:()=>({color:'#00bfff',weight:2.5,opacity:layerDef.opacity||0.85}),
+        onEachFeature:(f,layer)=>{const name=f.properties?.DRAIN_NAME||'Unnamed drain';layer.bindTooltip(name,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: ESSEX DRAINS');});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='cw_storm'){
+      const layer=L.esri.dynamicMapLayer({
+        url:'https://gis.centrewellington.ca/server/rest/services/AM_Storm_Sewer/MapServer',
+        opacity:layerDef.opacity||1,
+        f:'image',format:'png32',
+        attribution:'© Township of Centre Wellington',
+      });
+      layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
+      layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
+      layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: CENTRE WELLINGTON STORM SEWER');});
+      layer.addTo(map);
+      agLayerInstances[id]=layer;
+      return;
+    }
+    if(id==='cw_airphoto'){
+      const layer=L.esri.imageMapLayer({
+        url:'https://gis.centrewellington.ca/server/rest/services/Airphoto2023_7_5cm_dynamic/ImageServer',
+        opacity:layerDef.opacity||1,
+        f:'image',format:'png32',
+        attribution:'© Township of Centre Wellington',
+      });
+      layer.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      layer.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: CENTRE WELLINGTON AIRPHOTO');});
+      layer.addTo(map);
+      agLayerInstances[id]=layer;
+      statusEl.className='ag-layer-status on'; statusEl.textContent='ON';
       return;
     }
     if(id==='aafc_crop'){
