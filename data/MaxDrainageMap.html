@@ -1676,6 +1676,58 @@ function updatedBadge(dateStr){
   return `<span style="display:inline-block;margin-top:3px;padding:2px 7px;background:${bg};border:1px solid ${border};border-radius:3px;color:${fg};font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:9px;letter-spacing:.5px;font-weight:700;white-space:nowrap">📅 Updated ${escHtml(dateStr)} · ${ageTxt}</span>`;
 }
 
+// ── Live "last updated" check — runs once per app launch, verified 2026-07-19 ──
+// Each dataset's ArcGIS Online item carries a real "modified" timestamp we can read
+// without a token (public metadata endpoint). AAFC's crop inventory isn't on ArcGIS
+// Online, so it uses Canada's separate open-data (CKAN) API instead. Silently keeps
+// the hardcoded fallback date already in AG_LAYERS if a fetch fails (offline, API
+// down, item ID changed, etc.) — never shows a broken/blank badge.
+const AGOL_LASTUPDATED_ITEMS={
+  lots:'960b8dccf21740e99448e47941ee84d6',
+  drains:'9e3141bef7004496ac16cd21173eedb8',
+  tile_drain:'ddcd03246387453ab5dd96cc42ba6501',
+  controlled:'4b2e0e3cdd0f48f0a832e568629daf56',
+  asr_parcels:'32ae484f58ab43a293379fd9df8ec1da',
+  roll_labels:'32ae484f58ab43a293379fd9df8ec1da',
+  townships:'a159cf53aefb46ac806cda5c5f79792c',
+  municipal:'64fb702e16204c3e88b528d9759f1174',
+  conservation:'b547efce2c4748d6bb37e8851305cbc2',
+  soil_cap:'a0eec61f72334bf7b4fc85d2f67456bd',
+  soil_drain:'a0eec61f72334bf7b4fc85d2f67456bd',
+  hsg:'a0eec61f72334bf7b4fc85d2f67456bd',
+  dfo_drain:'9e3141bef7004496ac16cd21173eedb8',
+  dtm_lidar:'776819a7a0de42f3b75e40527cc36a0a',
+  olc_v1:'667367a759214a089917adccdbae7cb2',
+};
+const AAFC_CKAN_DATASET_ID='ba2645d5-4458-414d-b196-6303ac06c1c9';
+
+function applyLastUpdated(id,dateStr){
+  const layerDef=AG_LAYERS.find(l=>l.id===id);
+  if(layerDef) layerDef.lastUpdated=dateStr;
+  const badgeWrap=document.querySelector('#ag-item-'+id+' .ag-updated-badge');
+  if(badgeWrap) badgeWrap.innerHTML=updatedBadge(dateStr);
+}
+
+async function refreshLastUpdatedDates(){
+  const jobs=Object.entries(AGOL_LASTUPDATED_ITEMS).map(async([id,itemId])=>{
+    try{
+      const r=await fetch(`https://www.arcgis.com/sharing/rest/content/items/${itemId}?f=json`,{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();
+      if(!d.modified) return;
+      applyLastUpdated(id,new Date(d.modified).toISOString().slice(0,10));
+    }catch(e){ console.debug('lastUpdated refresh failed for',id,'— keeping cached date:',e.message); }
+  });
+  jobs.push((async()=>{
+    try{
+      const r=await fetch(`https://open.canada.ca/data/api/action/package_show?id=${AAFC_CKAN_DATASET_ID}`,{signal:AbortSignal.timeout(8000)});
+      const d=await r.json();
+      const modified=d?.result?.metadata_modified;
+      if(modified) applyLastUpdated('aafc_crop',modified.slice(0,10));
+    }catch(e){ console.debug('lastUpdated refresh failed for aafc_crop — keeping cached date:',e.message); }
+  })());
+  await Promise.allSettled(jobs);
+}
+
 function buildAgLayerUI(){
   const container=document.getElementById('agLayerList');
   container.innerHTML=AG_LAYERS.map(l=>`
@@ -1685,7 +1737,7 @@ function buildAgLayerUI(){
         <div class="ag-layer-info">
           <div class="ag-layer-name" style="color:${l.color}">${l.name}</div>
           <div class="ag-layer-desc">${l.desc}</div>
-          ${l.lastUpdated?updatedBadge(l.lastUpdated):''}
+          <div class="ag-updated-badge">${l.lastUpdated?updatedBadge(l.lastUpdated):''}</div>
         </div>
         <label class="tog" onclick="event.stopPropagation()" style="margin-left:4px" title="${l.broken?'Unavailable — live service was removed by the data provider':''}">
           <input type="checkbox" id="ag-tog-${l.id}" onchange="toggleAgLayer('${l.id}',this.checked)" ${l.broken?'disabled':''}>
@@ -6222,6 +6274,7 @@ async function runShortRollImport(){
 }
 
 buildAgLayerUI();
+refreshLastUpdatedDates();
 initCollapsibleSettings();
 setBasemap('satellite');
 // On mobile, start with both side panels collapsed so the map is visible
