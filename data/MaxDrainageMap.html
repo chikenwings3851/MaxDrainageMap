@@ -562,7 +562,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="hmenu-lbl" id="landCoverLbl" style="display:none">Land cover source</div>
         <select id="landCoverSrc" title="Land cover source for LAND USE table" style="display:none;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:'Roboto Mono','Share Tech Mono',monospace;font-size:10px;padding:5px 7px;border-radius:4px;cursor:pointer;">
           <option value="olc">OLC V1 (2020)</option>
-          <option value="solris">SOLRIS v2 (S. Ont)</option>
+          <option value="solris" disabled title="SOLRIS live service was removed by MNRF/LIO — no longer available">SOLRIS (unavailable — service removed)</option>
         </select>
       </div>
     </div>
@@ -1497,10 +1497,10 @@ const AG_LAYERS=[
       {color:'#cdaa66',label:'Cropland'},{color:'#cd8966',label:'Hay-pasture'},{color:'#000000',label:'Transportation'},
       {color:'#ff0000',label:'Unclassified'},
     ]},
-  {id:'solris',    name:'SOLRIS / Land Cover v2',icon:'🌲',desc:'A more detailed land cover classification (forest, wetland, agriculture, urban, and finer sub-categories) purpose-built for Southern Ontario — more precise than OLC V1 within its coverage area.',color:'#2d8a4e',layerIds:[],svcUrl:'solris',minZoom:8,opacity:.7,
-    source:'Southern Ontario Land Resource Information System (SOLRIS) v2, MNRF. Requires token (this specific service is token-gated even though it\'s conceptually "open" data). The service\'s own /legend endpoint currently errors (HTTP 500) even with a token, so these colours are the app\'s existing best-effort palette, not independently re-verified against a live legend on 2026-07-19 — the app already auto-corrects to the real legend at runtime where possible (see querySWMHYMO).',
-    sourceUrl:'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Thematic/Ontario_Land_Cover_Compilation_v2/ImageServer',
-    infoUrl:'https://geohub.lio.gov.on.ca/documents/5311d0d00fe7489b84cf910dd7f7d589',
+  {id:'solris',    name:'SOLRIS 3.0 (unavailable)',icon:'🌲',desc:'A more detailed land cover classification (forest, wetland, agriculture, urban, and finer sub-categories) purpose-built for Southern Ontario. UNAVAILABLE as of 2026-07-19 — MNRF/LIO removed the live web service entirely (confirmed: it no longer appears in the server\'s own folder listing). SOLRIS 3.0 was only ever published as a downloadable file, never as a live map service. Toggle disabled below; legend kept for reference only.',color:'#2d8a4e',layerIds:[],svcUrl:'solris',minZoom:8,opacity:.7,broken:true,
+    source:'Southern Ontario Land Resource Information System (SOLRIS) 3.0, MNRF — download-only, no live service exists. Confirmed removed from the ws.geoservices.lrc.gov.on.ca/arcgis5 server directory on 2026-07-19 (the old v2 service this app used to call is simply gone).',
+    sourceUrl:'https://ws.gisetl.lrc.gov.on.ca/fmedatadownload/Packages/SOLRIS_Version_3_0.zip',
+    infoUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/SOLRIS%20v3.0%20-%20Data%20Specifications.pdf',
     legend:[
       {color:'#004da8',label:'Open Water'},{color:'#73b2ff',label:'Open Shoreline'},{color:'#bee8ff',label:'Tilled / Mudflat'},
       {color:'#008a8a',label:'Open Bog'},{color:'#00a884',label:'Open Fen'},{color:'#4cb09e',label:'Marsh'},
@@ -1673,12 +1673,12 @@ function buildAgLayerUI(){
           <div class="ag-layer-name" style="color:${l.color}">${l.name}</div>
           <div class="ag-layer-desc">${l.desc}</div>
         </div>
-        <label class="tog" onclick="event.stopPropagation()" style="margin-left:4px">
-          <input type="checkbox" id="ag-tog-${l.id}" onchange="toggleAgLayer('${l.id}',this.checked)">
+        <label class="tog" onclick="event.stopPropagation()" style="margin-left:4px" title="${l.broken?'Unavailable — live service was removed by the data provider':''}">
+          <input type="checkbox" id="ag-tog-${l.id}" onchange="toggleAgLayer('${l.id}',this.checked)" ${l.broken?'disabled':''}>
           <span class="tog-track"></span>
         </label>
       </div>
-      <div id="ag-status-${l.id}" class="ag-layer-status off">OFF</div>
+      <div id="ag-status-${l.id}" class="ag-layer-status off">${l.broken?'N/A':'OFF'}</div>
       <div id="ag-zoom-warn-${l.id}" class="zoom-warn">⚠ Zoom to ${l.minZoom}+ to see this layer</div>
       <div class="ag-layer-controls" id="ag-ctrl-${l.id}">
         <div class="ag-opacity-row">
@@ -1709,6 +1709,12 @@ function toggleAgExpand(id){document.getElementById('ag-item-'+id).classList.tog
 
 function toggleAgLayer(id,enabled){
   const layerDef=AG_LAYERS.find(l=>l.id===id);
+  if(enabled&&layerDef&&layerDef.broken){
+    showToast('⚠ UNAVAILABLE — live service was removed by the data provider');
+    const tog=document.getElementById('ag-tog-'+id);
+    if(tog) tog.checked=false;
+    return;
+  }
   if(enabled&&layerDef&&layerDef.requiresToken&&!getLioToken()){
     showToast('PASTE AGMAPS TOKEN FIRST');
     const tog=document.getElementById('ag-tog-'+id);
