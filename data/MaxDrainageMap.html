@@ -1383,7 +1383,7 @@ const AG_LAYERS=[
   {id:'drains',     name:'Municipal Drains',          icon:'💧',desc:'Drains constructed and maintained under the Drainage Act — the actual engineered channels, not natural watercourses.', color:'#00bfff',layerIds:[7],  svcUrl:OPEN01_URL,  minZoom:9, opacity:.85,
     source:'Land Information Ontario (LIO) Open Data — "Constructed Drain" (OMAFRA), verified 2026-07-19. No token needed.',
     sourceUrl:OPEN01_URL+'/7',
-    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::constructed-drain/explore'},
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::constructed-drain/about'},
   {id:'tile_drain', name:'Tile Drainage',             icon:'🔵',desc:'Areas where subsurface agricultural tile has been installed to drain fields — reported by licensed drainage contractors to OMAFRA. Does not show individual tile runs, only the mapped extent of tiled area.', color:'#4488ff',layerIds:[11],  svcUrl:OPEN01_URL, minZoom:10,opacity:.6,
     source:'Land Information Ontario (LIO) Open Data — "Tile Drainage Area" (OMAFRA), verified 2026-07-19. No token needed.',
     sourceUrl:OPEN01_URL+'/11',
@@ -1464,7 +1464,7 @@ const AG_LAYERS=[
   {id:'dfo_drain',  name:'DFO Drain Classification',  icon:'🐟',desc:'Fisheries and Oceans Canada\'s sensitivity rating for fish habitat in a drain, under the federal Fisheries Act — determines what level of review (if any) drain maintenance work needs.', color:'#ff4499',layerIds:[7],  svcUrl:OPEN01_URL,        minZoom:10,opacity:.7,
     source:'Land Information Ontario (LIO) Open Data — "Constructed Drain" (DFO_CLASS field), verified 2026-07-19. General framework confirmed against DFO\'s public Guidance Document for Maintaining and Repairing Municipal Drains; exact A/B vs E1/E2 boundary not independently re-verified here — treat borderline cases as needing a DFO/Conservation Authority check regardless of what this layer shows.',
     sourceUrl:OPEN01_URL+'/7',
-    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::constructed-drain/explore',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::constructed-drain/about',
     legend:[
       {color:'#c850ff',label:'C — Lower sensitivity; streamlined "Class Authorization" review'},
       {color:'#ff8800',label:'D — Higher sensitivity; full site-specific Fisheries Act review'},
