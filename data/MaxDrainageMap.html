@@ -1656,6 +1656,46 @@ const AG_LAYERS=[
     lastUpdated:'2021-12-23',
     sourceUrl:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Gravity_Mains/FeatureServer/0',
     infoUrl:'https://opendata-city-of-waterloo.opendata.arcgis.com/datasets/City-of-Waterloo::stormwater-gravity-mains/about'},
+  {id:'guelph_swm', group:'muni', name:'SWM Ponds (Guelph)', icon:'🌧️',desc:'City of Guelph stormwater management ponds (152 facilities, with name/status/type). Guelph doesn\'t publish its storm pipe network publicly — ponds are the only storm infrastructure on its open data server.', color:'#39ff14',layerIds:[],svcUrl:'guelph_swm',minZoom:12,opacity:.7,
+    source:'City of Guelph public GIS server (OpenData/OpenData2 layer 10), verified 2026-07-19. No token needed. Server doesn\'t expose edit-tracking, so no last-updated date is available.',
+    sourceUrl:'https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData2/FeatureServer/10',
+    infoUrl:'https://geodatahub-cityofguelph.opendata.arcgis.com/datasets/stormwater-management-pond'},
+  {id:'oakville_storm', group:'muni', name:'Storm Sewer (Oakville)', icon:'🌧️',desc:'Town of Oakville storm sewer network — ~18,700 storm mains and ~26,000 catch basins.', color:'#4488ff',layerIds:[],svcUrl:'oakville_storm',minZoom:13,opacity:1,
+    source:'Town of Oakville public GIS server (PGIS_BULK hosted datasets via Explore Oakville open data), verified 2026-07-19. No token needed. Server doesn\'t expose edit-tracking, so no last-updated date is available.',
+    sourceUrl:'https://maps.oakville.ca/oakgis/rest/services/PGIS_BULK/STM_StormMain/FeatureServer/0',
+    infoUrl:'https://portal-exploreoakville.opendata.arcgis.com/'},
+  {id:'burlington_storm', group:'muni', name:'Storm Sewer (Burlington)', icon:'🌧️',desc:'City of Burlington storm sewer network — ~45,000 storm lines plus point structures, rendered with the city\'s own symbology.', color:'#4488ff',layerIds:[0,1],svcUrl:'burlington_storm',minZoom:13,opacity:1,
+    source:'City of Burlington public GIS server (COB/StormLayers), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+    sourceUrl:'https://mapping.burlington.ca/arcgisweb/rest/services/COB/StormLayers/MapServer',
+    infoUrl:'https://navburl-burlington.opendata.arcgis.com/'},
+  {id:'mississauga_storm', group:'muni', name:'Storm Sewer (Mississauga)', icon:'🌧️',desc:'City of Mississauga storm sewer network — ~82,000 pipes and ~82,000 nodes (manholes, catch basins, outfalls combined in the node dataset).', color:'#4488ff',layerIds:[],svcUrl:'mississauga_storm',minZoom:13,opacity:1,
+    source:'City of Mississauga public Open Data (hosted feature services), verified 2026-07-19. No token needed. Live edit-tracking confirmed: last real edit 2026-07-01.',
+    lastUpdated:'2026-07-01',
+    sourceUrl:'https://services6.arcgis.com/hM5ymMLbxIyWTjn2/arcgis/rest/services/StormSegment/FeatureServer/0',
+    infoUrl:'https://data.mississauga.ca/'},
+  {id:'brampton_storm', group:'muni', name:'Catch Basins (Brampton)', icon:'🌧️',desc:'City of Brampton catch basins (~80,600). Brampton publishes only catch basins publicly — no storm pipe network — so this layer is points-only.', color:'#00e5ff',layerIds:[],svcUrl:'brampton_storm',minZoom:14,opacity:1,
+    source:'City of Brampton public GeoHub (hosted feature service), verified 2026-07-19. No token needed. Live edit-tracking present; last real edit 2024-08-20 — older than most storm layers here, treat accordingly.',
+    lastUpdated:'2024-08-20',
+    sourceUrl:'https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Catch_Basins/FeatureServer/0',
+    infoUrl:'https://geohub.brampton.ca/'},
+  {id:'durham_storm', group:'muni', name:'Storm Sewer (Durham Region)', icon:'🌧️',desc:'Regional Municipality of Durham storm sewer network — gravity mains, maintenance holes and catch basins, region-wide (Oshawa, Whitby, Ajax, Pickering, Clarington etc.).', color:'#4488ff',layerIds:[67,133,134],svcUrl:'durham_storm',minZoom:13,opacity:1,
+    source:'Regional Municipality of Durham public GIS server (Open_Data/Durham_OpenData), verified 2026-07-19. No token needed. No published last-updated date for this service.',
+    sourceUrl:'https://maps.durham.ca/arcgis/rest/services/Open_Data/Durham_OpenData/MapServer',
+    infoUrl:'https://opendata.durham.ca/'},
+  {id:'hamilton_storm', group:'muni', name:'Storm Sewer (Hamilton)', icon:'🌧️',desc:'City of Hamilton storm sewer — ~25,000 storm mains (filtered out of the city\'s combined sewer dataset, which also carries sanitary/combined/forcemain) plus 148 stormwater management facilities.', color:'#4488ff',layerIds:[],svcUrl:'hamilton_storm',minZoom:13,opacity:1,
+    source:'City of Hamilton public Open Data (hosted feature services), verified 2026-07-19. No token needed. The Sewer Main dataset covers all sewer types; this layer filters to SUBTYPE=STORM server-side (24,971 of 54,105 mains). Live edit-tracking confirmed: last real edit 2026-07-13.',
+    lastUpdated:'2026-07-13',
+    sourceUrl:'https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/Sewer_Main/FeatureServer/0',
+    infoUrl:'https://open.hamilton.ca/'},
+  {id:'ptbo_storm', group:'muni', name:'Storm Sewer (Peterborough)', icon:'🌧️',desc:'City of Peterborough storm sewer network — ~14,000 pipes, ~7,400 manholes, ~6,200 inlets, detention ponds and discharge points.', color:'#4488ff',layerIds:[],svcUrl:'ptbo_storm',minZoom:13,opacity:1,
+    source:'City of Peterborough public GIS Open Data (hosted feature services), verified 2026-07-19. No token needed. Live edit-tracking confirmed: last real edit 2026-04-22.',
+    lastUpdated:'2026-04-22',
+    sourceUrl:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Pipe/FeatureServer/0',
+    infoUrl:'https://data-ptbo.opendata.arcgis.com/'},
+  {id:'kingston_storm', group:'muni', name:'Storm Sewer (Kingston)', icon:'🌧️',desc:'City of Kingston storm sewer network — ~31,000 pipes plus manholes, inlets and storm ponds.', color:'#4488ff',layerIds:[],svcUrl:'kingston_storm',minZoom:13,opacity:1,
+    source:'City of Kingston public Open Data, verified 2026-07-19. No token needed. Note: Kingston serves these through ArcGIS Online utility proxies rather than direct service URLs — if this layer ever breaks, the proxy IDs have likely rotated; re-look them up on Kingston\'s open data site rather than assuming the data is gone. No exposed edit-tracking through the proxy.',
+    sourceUrl:'https://utility.arcgis.com/usrsvcs/servers/bf4f2517b3514cbbb8df5591361cc829/rest/services/Eng/Storm_Pipe/FeatureServer/0',
+    infoUrl:'https://opendatakingston.cityofkingston.ca/'},
 ];
 
 const agLayerInstances={};
@@ -1834,6 +1874,17 @@ const MUNI_LASTUPDATED_QUERIES={
   cw_storm:{url:'https://gis.centrewellington.ca/server/rest/services/AM_Storm_Sewer/MapServer/1',field:'last_edited_date'},
 };
 
+// Hosted (AGOL) feature services expose editingInfo.dataLastEditDate directly in the layer JSON —
+// simpler and cheaper than a MAX-statistics query, but only hosted services have it.
+const MUNI_EDITINFO_CHECKS={
+  kitchener_storm:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Pipes/FeatureServer/0',
+  waterloo_storm:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Gravity_Mains/FeatureServer/0',
+  mississauga_storm:'https://services6.arcgis.com/hM5ymMLbxIyWTjn2/arcgis/rest/services/StormSegment/FeatureServer/0',
+  brampton_storm:'https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Catch_Basins/FeatureServer/0',
+  hamilton_storm:'https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/Sewer_Main/FeatureServer/0',
+  ptbo_storm:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Pipe/FeatureServer/0',
+};
+
 function applyLastUpdated(id,dateStr){
   const layerDef=AG_LAYERS.find(l=>l.id===id);
   if(layerDef) layerDef.lastUpdated=dateStr;
@@ -1865,6 +1916,16 @@ async function refreshLastUpdatedDates(){
         const r=await fetch(`${q.url}/query?where=1=1&outStatistics=${stat}&f=json`,{signal:AbortSignal.timeout(8000)});
         const d=await r.json();
         const ms=d?.features?.[0]?.attributes?.maxDate;
+        if(ms) applyLastUpdated(id,new Date(ms).toISOString().slice(0,10));
+      }catch(e){ console.debug('lastUpdated refresh failed for',id,'— keeping cached date:',e.message); }
+    })());
+  });
+  Object.entries(MUNI_EDITINFO_CHECKS).forEach(([id,url])=>{
+    jobs.push((async()=>{
+      try{
+        const r=await fetch(`${url}?f=json`,{signal:AbortSignal.timeout(8000)});
+        const d=await r.json();
+        const ms=d?.editingInfo?.dataLastEditDate||d?.editingInfo?.lastEditDate;
         if(ms) applyLastUpdated(id,new Date(ms).toISOString().slice(0,10));
       }catch(e){ console.debug('lastUpdated refresh failed for',id,'— keeping cached date:',e.message); }
     })());
@@ -1929,13 +1990,19 @@ function buildMultiFeatureLayerGroup(specs,opacity,statusEl,errLabel){
   const group=L.layerGroup();
   let loaded=0,errored=0;
   specs.forEach(spec=>{
-    const fl=L.esri.featureLayer({
+    const opts={
       url:spec.url, simplifyFactor:0.3, precision:5,
       style:()=>({color:spec.color||'#4488ff',weight:spec.weight||2,opacity:opacity,fillColor:spec.color||'#4488ff',fillOpacity:opacity*0.6}),
       pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:3,color:spec.color||'#4488ff',weight:1,fillOpacity:opacity}),
       onEachFeature:(f,layer)=>{if(spec.label)layer.bindTooltip(spec.label,{sticky:true,className:'ws-tooltip'});},
-    });
-    fl.on('load',()=>{loaded++; if(statusEl){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
+    };
+    if(spec.where) opts.where=spec.where;
+    const fl=L.esri.featureLayer(opts);
+    const markOn=()=>{loaded++; if(statusEl){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}};
+    fl.on('load',markOn);
+    // Some older ArcGIS servers (e.g. Guelph's 10.91 hosting server) don't reliably fire 'load'
+    // even though features render fine — 'requestend' fires per completed request and covers them.
+    fl.on('requestend',markOn);
     fl.on('error',()=>{errored++; if(statusEl && errored===specs.length){statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: '+errLabel);}});
     fl.addTo(group);
   });
@@ -2309,6 +2376,106 @@ function toggleAgLayer(id,enabled){
         {url:base+'Stormwater_Outlets/FeatureServer/0',color:'#ff6b35',label:'Outlet'},
         {url:base+'Stormwater_Ponds/FeatureServer/0',color:'#39ff14',weight:1.5,label:'SWM Pond'},
       ],layerDef.opacity||1,statusEl,'WATERLOO STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='guelph_swm'){
+      const group=buildMultiFeatureLayerGroup([
+        {url:'https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData2/FeatureServer/10',color:'#39ff14',weight:1.5,label:'SWM Pond'},
+      ],layerDef.opacity||0.7,statusEl,'GUELPH SWM PONDS');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='oakville_storm'){
+      const base='https://maps.oakville.ca/oakgis/rest/services/PGIS_BULK/';
+      const group=buildMultiFeatureLayerGroup([
+        {url:base+'STM_StormMain/FeatureServer/0',color:'#4488ff',weight:2,label:'Storm Main'},
+        {url:base+'STM_CatchBasin/FeatureServer/0',color:'#00e5ff',label:'Catch Basin'},
+      ],layerDef.opacity||1,statusEl,'OAKVILLE STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='burlington_storm'){
+      const layer=L.esri.dynamicMapLayer({
+        url:'https://mapping.burlington.ca/arcgisweb/rest/services/COB/StormLayers/MapServer',
+        layers:layerDef.layerIds,
+        opacity:layerDef.opacity||1,
+        f:'image',format:'png32',
+        attribution:'© City of Burlington',
+      });
+      layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
+      layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
+      layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: BURLINGTON STORM SEWER');});
+      layer.addTo(map);
+      agLayerInstances[id]=layer;
+      return;
+    }
+    if(id==='mississauga_storm'){
+      const base='https://services6.arcgis.com/hM5ymMLbxIyWTjn2/arcgis/rest/services/';
+      const group=buildMultiFeatureLayerGroup([
+        {url:base+'StormSegment/FeatureServer/0',color:'#4488ff',weight:2,label:'Storm Pipe'},
+        {url:base+'StormNode/FeatureServer/0',color:'#00e5ff',label:'Storm Node'},
+      ],layerDef.opacity||1,statusEl,'MISSISSAUGA STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='brampton_storm'){
+      const group=buildMultiFeatureLayerGroup([
+        {url:'https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Catch_Basins/FeatureServer/0',color:'#00e5ff',label:'Catch Basin'},
+      ],layerDef.opacity||1,statusEl,'BRAMPTON CATCH BASINS');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='durham_storm'){
+      const layer=L.esri.dynamicMapLayer({
+        url:'https://maps.durham.ca/arcgis/rest/services/Open_Data/Durham_OpenData/MapServer',
+        layers:layerDef.layerIds,
+        opacity:layerDef.opacity||1,
+        f:'image',format:'png32',
+        attribution:'© Regional Municipality of Durham',
+      });
+      layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
+      layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
+      layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: DURHAM STORM SEWER');});
+      layer.addTo(map);
+      agLayerInstances[id]=layer;
+      return;
+    }
+    if(id==='hamilton_storm'){
+      const base='https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/';
+      const group=buildMultiFeatureLayerGroup([
+        {url:base+'Sewer_Main/FeatureServer/0',where:"SUBTYPE='STORM'",color:'#4488ff',weight:2,label:'Storm Main'},
+        {url:base+'Stormwater_Management_Facilities/FeatureServer/0',color:'#39ff14',weight:1.5,label:'SWM Facility'},
+      ],layerDef.opacity||1,statusEl,'HAMILTON STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='ptbo_storm'){
+      const base='https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/';
+      const group=buildMultiFeatureLayerGroup([
+        {url:base+'Storm_Pipe/FeatureServer/0',color:'#4488ff',weight:2,label:'Storm Pipe'},
+        {url:base+'Storm_Manhole/FeatureServer/0',color:'#ffd600',label:'Manhole'},
+        {url:base+'Storm_Inlet/FeatureServer/0',color:'#00e5ff',label:'Inlet'},
+        {url:base+'Storm_Detention_Pond/FeatureServer/0',color:'#39ff14',weight:1.5,label:'Detention Pond'},
+        {url:base+'Storm_Discharge_Point/FeatureServer/0',color:'#ff6b35',label:'Discharge Point'},
+      ],layerDef.opacity||1,statusEl,'PETERBOROUGH STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='kingston_storm'){
+      const group=buildMultiFeatureLayerGroup([
+        {url:'https://utility.arcgis.com/usrsvcs/servers/bf4f2517b3514cbbb8df5591361cc829/rest/services/Eng/Storm_Pipe/FeatureServer/0',color:'#4488ff',weight:2,label:'Storm Pipe'},
+        {url:'https://utility.arcgis.com/usrsvcs/servers/8178c4526aa541d7930a5271544a50e5/rest/services/Eng/Storm_Manhole/FeatureServer/2',color:'#ffd600',label:'Manhole'},
+        {url:'https://utility.arcgis.com/usrsvcs/servers/086384dba1804bcbbb5c503d9a777cd1/rest/services/Eng/Storm_Inlet/FeatureServer/0',color:'#00e5ff',label:'Inlet'},
+        {url:'https://utility.arcgis.com/usrsvcs/servers/1bcc6f78d8914986bd28b3b556aebb99/rest/services/Eng/Active_Storm_Basin/FeatureServer/0',color:'#39ff14',weight:1.5,label:'Storm Pond'},
+      ],layerDef.opacity||1,statusEl,'KINGSTON STORM SEWER');
       group.addTo(map);
       agLayerInstances[id]=group;
       return;
