@@ -6546,18 +6546,78 @@ function wgs84ToUTM17N(lat,lng){
 }
 // Which toggle layers can become CAD linework, and how they land in the DXF.
 // Raster layers (hillshade, land cover, crop) have no geometry to export.
+// Every DXF-exportable layer: a CAD layer name, an AutoCAD colour index (ACI, 1-255), and a
+// `sources` list telling fetchOverlayForDXF where its real geometry lives. A source is either
+// {url} (a single feature-service query endpoint), {mapServer,ids:[...]} (a MapServer whose known
+// sublayer ids each need their own /query call), or {mapServer,discover:true} (a MapServer whose
+// sublayer ids were never hardcoded elsewhere — resolved live at export time). `where` filters
+// server-side same as the live map rendering (e.g. Hamilton's storm-vs-sanitary split).
 const DXF_EXPORTABLE={
-  drains:      {dxfLayer:'DRAINS-MUNICIPAL',  color:4},
-  tile_drain:  {dxfLayer:'TILE-DRAINAGE',     color:1},
-  controlled:  {dxfLayer:'DRAINS-CONTROLLED', color:6},
-  dfo_drain:   {dxfLayer:'DRAINS-DFO',        color:30},
-  lots:        {dxfLayer:'LOTS-CONCESSIONS',  color:2, openUrl:true},
-  townships:   {dxfLayer:'TOWNSHIPS',         color:3},
-  municipal:   {dxfLayer:'MUNICIPAL-BDY',     color:2},
-  conservation:{dxfLayer:'CONSERVATION-AUTH', color:96},
-  soil_cap:    {dxfLayer:'SOIL-CAPABILITY',   color:8},
-  soil_drain:  {dxfLayer:'SOIL-DRAINAGE',     color:9},
-  hsg:         {dxfLayer:'SOIL-HSG',          color:5},
+  // ── Province-wide (original 11) ──
+  drains:      {dxfLayer:'DRAINS-MUNICIPAL',  color:4,  sources:[{url:OPEN01_URL+'/7'}]},
+  tile_drain:  {dxfLayer:'TILE-DRAINAGE',     color:1,  sources:[{url:OPEN01_URL+'/11'}]},
+  controlled:  {dxfLayer:'DRAINS-CONTROLLED', color:6,  sources:[{url:AIA_URL+'/22'}], needsToken:true},
+  dfo_drain:   {dxfLayer:'DRAINS-DFO',        color:30, sources:[{url:OPEN01_URL+'/7'}]},
+  lots:        {dxfLayer:'LOTS-CONCESSIONS',  color:2,  sources:[{url:LOT_FABRIC_URL}]},
+  townships:   {dxfLayer:'TOWNSHIPS',         color:3,  sources:[{url:TOWNSHIP_URL}]},
+  municipal:   {dxfLayer:'MUNICIPAL-BDY',     color:2,  sources:[{url:MUNICIPAL_URL}]},
+  conservation:{dxfLayer:'CONSERVATION-AUTH', color:96, sources:[{url:OPEN03_URL+'/11'}]},
+  soil_cap:    {dxfLayer:'SOIL-CAPABILITY',   color:8,  sources:[{url:SOIL_SURVEY_URL}]},
+  soil_drain:  {dxfLayer:'SOIL-DRAINAGE',     color:9,  sources:[{url:SOIL_SURVEY_URL}]},
+  hsg:         {dxfLayer:'SOIL-HSG',          color:5,  sources:[{url:SOIL_SURVEY_URL}]},
+  // ── Added later the same session (PSW, K-factor) ──
+  soil_erodibility:{dxfLayer:'SOIL-ERODIBILITY', color:40, sources:[{url:SOIL_SURVEY_URL}]},
+  psw:         {dxfLayer:'WETLANDS-PSW', color:214, sources:[{url:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/15', where:"WETLAND_SIGNIFICANCE IN ('Evaluated-Provincial','Evaluated-Other')"}]},
+  // ── County & municipal layers ──
+  essex_drains:{dxfLayer:'DRAINS-ESSEX', color:140, sources:[{url:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/coe_water/MapServer/4'}]},
+  cw_storm:    {dxfLayer:'STORM-CENTREWELLINGTON', color:150, sources:[{mapServer:'https://gis.centrewellington.ca/server/rest/services/AM_Storm_Sewer/MapServer', discover:true}]},
+  barrie_storm:{dxfLayer:'STORM-BARRIE', color:160, sources:[{mapServer:'https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/StormInfrastructure/MapServer', ids:[0,1,2,3,5]}]},
+  oxford_storm:{dxfLayer:'STORM-OXFORD', color:170, sources:[{mapServer:'https://public.oxfordcounty.ca/arcgis/rest/services/PublicWorks/StormInfrastructureWM/MapServer', ids:[0,1,2,3]}]},
+  westperth_storm:{dxfLayer:'STORM-WESTPERTH', color:180, sources:[{mapServer:'https://maps.perthcounty.ca/arcgis/rest/services/West_Perth/Public_Works_Storm_WP/MapServer', ids:[0,1,2,3,4]}]},
+  northperth_storm:{dxfLayer:'STORM-NORTHPERTH', color:190, sources:[{mapServer:'https://maps.perthcounty.ca/arcgis/rest/services/North_Perth/StormSewer_NP/MapServer', ids:[1,2,3,4]}]},
+  essex_towns_storm:{dxfLayer:'STORM-ESSEXTOWNS', color:200, sources:[{mapServer:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/MunicipalInfrastructure/MapServer', ids:[24,25,27,28,29,31,32,33,35,36,37]}]},
+  kitchener_storm:{dxfLayer:'STORM-KITCHENER', color:210, sources:[
+    {url:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Pipes/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Manholes/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Catchbasins/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Outlets/FeatureServer/0'},
+  ]},
+  waterloo_storm:{dxfLayer:'STORM-WATERLOO', color:220, sources:[
+    {url:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Gravity_Mains/FeatureServer/0'},
+    {url:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Manholes/FeatureServer/0'},
+    {url:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Catch_Basins/FeatureServer/0'},
+    {url:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Outlets/FeatureServer/0'},
+    {url:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Ponds/FeatureServer/0'},
+  ]},
+  guelph_swm:  {dxfLayer:'SWM-PONDS-GUELPH', color:100, sources:[{url:'https://gismaps.guelph.ca/hosting/rest/services/OpenData/OpenData2/FeatureServer/10'}]},
+  oakville_storm:{dxfLayer:'STORM-OAKVILLE', color:230, sources:[
+    {url:'https://maps.oakville.ca/oakgis/rest/services/PGIS_BULK/STM_StormMain/FeatureServer/0'},
+    {url:'https://maps.oakville.ca/oakgis/rest/services/PGIS_BULK/STM_CatchBasin/FeatureServer/0'},
+  ]},
+  burlington_storm:{dxfLayer:'STORM-BURLINGTON', color:240, sources:[{mapServer:'https://mapping.burlington.ca/arcgisweb/rest/services/COB/StormLayers/MapServer', ids:[0,1]}]},
+  mississauga_storm:{dxfLayer:'STORM-MISSISSAUGA', color:250, sources:[
+    {url:'https://services6.arcgis.com/hM5ymMLbxIyWTjn2/arcgis/rest/services/StormSegment/FeatureServer/0'},
+    {url:'https://services6.arcgis.com/hM5ymMLbxIyWTjn2/arcgis/rest/services/StormNode/FeatureServer/0'},
+  ]},
+  brampton_storm:{dxfLayer:'CATCHBASINS-BRAMPTON', color:60, sources:[{url:'https://services3.arcgis.com/rl7ACuZkiFsmDA2g/arcgis/rest/services/Catch_Basins/FeatureServer/0'}]},
+  durham_storm:{dxfLayer:'STORM-DURHAM', color:70, sources:[{mapServer:'https://maps.durham.ca/arcgis/rest/services/Open_Data/Durham_OpenData/MapServer', ids:[67,133,134]}]},
+  hamilton_storm:{dxfLayer:'STORM-HAMILTON', color:80, sources:[
+    {url:'https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/Sewer_Main/FeatureServer/0', where:"SUBTYPE='STORM'"},
+    {url:'https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/Stormwater_Management_Facilities/FeatureServer/0'},
+  ]},
+  ptbo_storm:  {dxfLayer:'STORM-PETERBOROUGH', color:90, sources:[
+    {url:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Pipe/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Manhole/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Inlet/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Detention_Pond/FeatureServer/0'},
+    {url:'https://services1.arcgis.com/JOTjMnANji9YTrZ2/arcgis/rest/services/Storm_Discharge_Point/FeatureServer/0'},
+  ]},
+  kingston_storm:{dxfLayer:'STORM-KINGSTON', color:110, sources:[
+    {url:'https://utility.arcgis.com/usrsvcs/servers/bf4f2517b3514cbbb8df5591361cc829/rest/services/Eng/Storm_Pipe/FeatureServer/0'},
+    {url:'https://utility.arcgis.com/usrsvcs/servers/8178c4526aa541d7930a5271544a50e5/rest/services/Eng/Storm_Manhole/FeatureServer/2'},
+    {url:'https://utility.arcgis.com/usrsvcs/servers/086384dba1804bcbbb5c503d9a777cd1/rest/services/Eng/Storm_Inlet/FeatureServer/0'},
+    {url:'https://utility.arcgis.com/usrsvcs/servers/1bcc6f78d8914986bd28b3b556aebb99/rest/services/Eng/Active_Storm_Basin/FeatureServer/0'},
+  ]},
 };
 
 function buildDXF(parcels, boundaryVerts, extraLayers){
@@ -6588,6 +6648,12 @@ function buildDXF(parcels, boundaryVerts, extraLayers){
         out.push(' 11',x1.toFixed(3),' 21',y1.toFixed(3),' 31','0.0');
       }
     }
+    // Point features (manholes, catch basins, outlets, etc.) — drawn as a small circle so they're
+    // visible in CAD without the reader needing to configure POINT display style (PDMODE/PDSIZE).
+    for(const [px,py] of (lyr.points||[])){
+      out.push('  0','CIRCLE','  8',lyr.dxfLayer,' 62',String(lyr.color));
+      out.push(' 10',px.toFixed(3),' 20',py.toFixed(3),' 30','0.0',' 40','0.35');
+    }
   }
 
   for(const p of parcels){
@@ -6614,28 +6680,30 @@ function buildDXF(parcels, boundaryVerts, extraLayers){
   return out.join('\n');
 }
 
-// Query one toggled-on overlay's geometry inside the export envelope → UTM polylines
-async function fetchOverlayForDXF(id, env, token){
-  const cfg=DXF_EXPORTABLE[id];
-  const def=AG_LAYERS.find(l=>l.id===id);
-  if(!cfg||!def) return null;
-  const url=cfg.openUrl ? LOT_FABRIC_URL : (AIA_URL+'/'+def.layerIds[0]);
-  if(!cfg.openUrl&&!token) return {skippedNoToken:true, dxfLayer:cfg.dxfLayer};
+// Query a single feature-layer endpoint inside the export envelope → UTM polylines + points.
+// Shared by every DXF_EXPORTABLE source, whether it's the only source for a layer or one of several
+// being merged together (e.g. a storm sewer layer's separate pipe/manhole/catch-basin services).
+async function queryOneDxfSource(url, env, where, token){
   const body=new URLSearchParams({
     f:'json',
     geometry:JSON.stringify(env), geometryType:'esriGeometryEnvelope', inSR:'4326',
     spatialRel:'esriSpatialRelIntersects', outFields:'', returnGeometry:'true',
-    outSR:'4326', resultRecordCount:'1500',
+    outSR:'4326', resultRecordCount:'2000',
+    where: where||'1=1',
   });
-  if(!cfg.openUrl) body.set('token',token);
+  if(token) body.set('token',token);
   const resp=await fetch(url+'/query',{method:'POST',
     headers:{'Content-Type':'application/x-www-form-urlencoded'},
     body:body.toString(), signal:AbortSignal.timeout(30000)});
   const data=await resp.json();
-  if(data.error) throw new Error(cfg.dxfLayer+': '+data.error.message);
-  const polylines=[];
+  if(data.error) throw new Error(data.error.message);
+  const polylines=[]; const points=[];
   for(const f of (data.features||[])){
     const g=f.geometry||{};
+    if(typeof g.x==='number'&&typeof g.y==='number'){
+      points.push(wgs84ToUTM17N(g.y,g.x));
+      continue;
+    }
     const parts=g.paths||g.rings||[];
     const closed=!!g.rings;
     for(const part of parts){
@@ -6646,7 +6714,43 @@ async function fetchOverlayForDXF(id, env, token){
       polylines.push({closed, verts:ring.map(([lng,lat])=>wgs84ToUTM17N(lat,lng))});
     }
   }
-  return {dxfLayer:cfg.dxfLayer, color:cfg.color, polylines, count:(data.features||[]).length};
+  return {polylines, points, count:(data.features||[]).length};
+}
+
+// A MapServer sublayer list discovered live (used when a layer's real sublayer ids were never
+// hardcoded, e.g. cw_storm renders "whatever's default-visible" rather than a fixed id list).
+async function discoverMapServerLayerIds(mapServerUrl){
+  const resp=await fetch(mapServerUrl+'?f=json',{signal:AbortSignal.timeout(15000)});
+  const data=await resp.json();
+  return (data.layers||[]).filter(l=>l.type==='Feature Layer').map(l=>l.id);
+}
+
+// Query one toggled-on overlay's geometry inside the export envelope → merged UTM polylines/points.
+// A layer's `sources` can be plain feature-service URLs, or {mapServer,ids} / {mapServer,discover:true}
+// for MapServer-style services whose sublayers need expanding into individual query URLs first.
+async function fetchOverlayForDXF(id, env, token){
+  const cfg=DXF_EXPORTABLE[id];
+  if(!cfg) return null;
+  if(cfg.needsToken&&!token) return {skippedNoToken:true, dxfLayer:cfg.dxfLayer};
+  let sources=[];
+  for(const src of cfg.sources){
+    if(src.url){ sources.push(src); continue; }
+    if(src.mapServer&&src.ids){ src.ids.forEach(i=>sources.push({url:src.mapServer+'/'+i, where:src.where})); continue; }
+    if(src.mapServer&&src.discover){
+      try{
+        const ids=await discoverMapServerLayerIds(src.mapServer);
+        ids.forEach(i=>sources.push({url:src.mapServer+'/'+i, where:src.where}));
+      }catch(e){ console.warn('DXF sublayer discovery failed for',id,e.message); }
+    }
+  }
+  const polylines=[]; const points=[]; let count=0;
+  for(const src of sources){
+    try{
+      const r=await queryOneDxfSource(src.url, env, src.where, cfg.needsToken?token:null);
+      polylines.push(...r.polylines); points.push(...r.points); count+=r.count;
+    }catch(err){ console.warn('DXF source failed for',id,src.url,err.message); }
+  }
+  return {dxfLayer:cfg.dxfLayer, color:cfg.color, polylines, points, count};
 }
 
 async function exportDXF(){
