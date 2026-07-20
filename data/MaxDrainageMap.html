@@ -1484,7 +1484,16 @@ const AG_LAYERS=[
     lastUpdated:'2025-11-27',
     sourceUrl:OPEN03_URL+'/11',
     infoUrl:'https://geohub.lio.gov.on.ca/datasets/lio::conservation-authority-administrative-area/about'},
-  {id:'soil_cap',   name:'Soil Capability',           icon:'🌱',desc:'Canada Land Inventory (CLI) rating of how suitable the soil is for common field crops (corn, soybeans, small grains, forages) — combines productivity, crop flexibility, and management needs.', color:'#88cc44',layerIds:[],  svcUrl:SOIL_SURVEY_URL,        minZoom:9, opacity:.6,
+  {id:'psw', name:'Wetlands (PSW + Other Evaluated)', icon:'🪷',desc:'Evaluated wetlands under the Provincial Policy Statement — Provincially Significant Wetlands (PSW) and other locally/regionally evaluated wetlands. Relevant wherever a drain alignment crosses or comes near one; may trigger additional review beyond standard Drainage Act procedure.', color:'#9333ea',layerIds:[],svcUrl:'psw',minZoom:9,opacity:.55,
+    source:'Land Information Ontario (LIO) Open Data — "Wetland" (WETLAND_SIGNIFICANCE field), verified 2026-07-19. No token needed. Only evaluated wetlands are shown here — roughly 90,600 of the ~3.63 million total polygons in the underlying dataset; the rest is unevaluated/unclassified wetland extent, too voluminous and too uncertain in significance to render meaningfully. Data last updated 2026-06-19 (per GeoHub item record).',
+    lastUpdated:'2026-06-19',
+    sourceUrl:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/15',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/mnrf::wetland/about',
+    legend:[
+      {color:'#9333ea',label:'Provincially Significant Wetland (PSW)'},
+      {color:'#c4b5fd',label:'Other Evaluated Wetland (local/regional significance)'},
+    ]},
+  {id:'soil_cap',  name:'Soil Capability',           icon:'🌱',desc:'Canada Land Inventory (CLI) rating of how suitable the soil is for common field crops (corn, soybeans, small grains, forages) — combines productivity, crop flexibility, and management needs.', color:'#88cc44',layerIds:[],  svcUrl:SOIL_SURVEY_URL,        minZoom:9, opacity:.6,
     source:'OMAFRA Soil Survey Complex (CLI1 field) via LIO Open Data, verified 2026-07-19 against the official LIO data dictionary. No token needed. Data last updated 2025-12-11 (per GeoHub item record).',
     lastUpdated:'2025-12-11',
     sourceUrl:'https://www.publicdocs.mnr.gov.on.ca/mirb/Soil%20Survey%20Complex%20-%20Data%20Description.pdf',
@@ -1798,6 +1807,7 @@ const AGOL_LASTUPDATED_ITEMS={
   townships:'a159cf53aefb46ac806cda5c5f79792c',
   municipal:'64fb702e16204c3e88b528d9759f1174',
   conservation:'b547efce2c4748d6bb37e8851305cbc2',
+  psw:'5216a770ef684d2fae8bcc13ee9c4357',
   soil_cap:'a0eec61f72334bf7b4fc85d2f67456bd',
   soil_drain:'a0eec61f72334bf7b4fc85d2f67456bd',
   hsg:'a0eec61f72334bf7b4fc85d2f67456bd',
@@ -2012,6 +2022,26 @@ function toggleAgLayer(id,enabled){
       });
       dtmLayer.addTo(map);
       agLayerInstances[id]=dtmLayer;
+      return;
+    }
+    if(id==='psw'){
+      const SIG_COLORS={'Evaluated-Provincial':'#9333ea','Evaluated-Other':'#c4b5fd'};
+      const fl=L.esri.featureLayer({
+        url:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open01/MapServer/15',
+        where:"WETLAND_SIGNIFICANCE IN ('Evaluated-Provincial','Evaluated-Other')",
+        simplifyFactor:0.4, precision:5,
+        style:f=>{const sig=f.properties?.WETLAND_SIGNIFICANCE;return{color:'#555',weight:0.7,opacity:0.7,fillColor:SIG_COLORS[sig]||'#9ca3af',fillOpacity:layerDef.opacity||0.55};},
+        onEachFeature:(f,layer)=>{
+          const a=f.properties||{};
+          const name=a.EVALUATED_WETLAND_NAME||'Unnamed wetland';
+          const sig=a.WETLAND_SIGNIFICANCE==='Evaluated-Provincial'?'Provincially Significant':'Other Evaluated';
+          layer.bindTooltip(`${name} — ${a.WETLAND_TYPE||'Wetland'} (${sig})`,{sticky:true,className:'ws-tooltip'});
+        },
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
       return;
     }
     if(id==='soil_cap'){
