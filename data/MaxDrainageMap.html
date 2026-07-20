@@ -1646,6 +1646,16 @@ const AG_LAYERS=[
     source:'County of Essex public GIS server (County/MunicipalInfrastructure, "Storm" group), verified 2026-07-19. No token needed. The only date-like field present ("Date_") turned out to be pipe construction/installation year, not a last-edited date — showing it as "last updated" would be misleading, so it\'s omitted.',
     sourceUrl:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/MunicipalInfrastructure/MapServer',
     infoUrl:'https://www.countyofessex.ca/discover-the-county/maps/'},
+  {id:'kitchener_storm', group:'muni', name:'Storm Sewer (Kitchener)', icon:'🌧️',desc:'City of Kitchener storm sewer network — pipes (with material, diameter, invert elevation and slope), manholes, catch basins and outlets. Published as several separate hosted datasets rather than one service; combined here into a single toggle.', color:'#4488ff',layerIds:[],svcUrl:'kitchener_storm',minZoom:13,opacity:1,
+    source:'City of Kitchener public Open Data (via the shared Region of Waterloo open data hub), verified 2026-07-19. No token needed. Live edit-tracking confirmed on the Storm Pipes dataset: last real edit 2026-06-23.',
+    lastUpdated:'2026-06-23',
+    sourceUrl:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Pipes/FeatureServer/0',
+    infoUrl:'https://opendata-city-of-waterloo.opendata.arcgis.com/datasets/KitchenerGIS::storm-pipes/about'},
+  {id:'waterloo_storm', group:'muni', name:'Storm Sewer (City of Waterloo)', icon:'🌧️',desc:'City of Waterloo storm sewer network — gravity mains, manholes, catch basins, outlets and stormwater management ponds. Published as several separate hosted datasets rather than one service; combined here into a single toggle.', color:'#4488ff',layerIds:[],svcUrl:'waterloo_storm',minZoom:13,opacity:1,
+    source:'City of Waterloo public Open Data (Region of Waterloo open data hub), verified 2026-07-19. No token needed. Live edit-tracking present on the underlying services; most recent confirmed edit 2021-12-23 — older than most other storm layers in this app, so treat as a lower-confidence "current as of" date.',
+    lastUpdated:'2021-12-23',
+    sourceUrl:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Gravity_Mains/FeatureServer/0',
+    infoUrl:'https://opendata-city-of-waterloo.opendata.arcgis.com/datasets/City-of-Waterloo::stormwater-gravity-mains/about'},
 ];
 
 const agLayerInstances={};
@@ -1910,6 +1920,27 @@ function buildAgLayerUI(){
 }
 
 function toggleAgExpand(id){document.getElementById('ag-item-'+id).classList.toggle('expanded');}
+
+// Some municipalities (e.g. Kitchener, Waterloo) publish storm sewer as several separate
+// hosted feature services instead of one multi-sublayer MapServer — this combines a list of
+// {url,color,weight} specs into one L.layerGroup that the rest of toggleAgLayer treats like
+// any other single layer (addTo/removeLayer both work fine on a layerGroup).
+function buildMultiFeatureLayerGroup(specs,opacity,statusEl,errLabel){
+  const group=L.layerGroup();
+  let loaded=0,errored=0;
+  specs.forEach(spec=>{
+    const fl=L.esri.featureLayer({
+      url:spec.url, simplifyFactor:0.3, precision:5,
+      style:()=>({color:spec.color||'#4488ff',weight:spec.weight||2,opacity:opacity,fillColor:spec.color||'#4488ff',fillOpacity:opacity*0.6}),
+      pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:3,color:spec.color||'#4488ff',weight:1,fillOpacity:opacity}),
+      onEachFeature:(f,layer)=>{if(spec.label)layer.bindTooltip(spec.label,{sticky:true,className:'ws-tooltip'});},
+    });
+    fl.on('load',()=>{loaded++; if(statusEl){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
+    fl.on('error',()=>{errored++; if(statusEl && errored===specs.length){statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: '+errLabel);}});
+    fl.addTo(group);
+  });
+  return group;
+}
 
 function toggleAgLayer(id,enabled){
   const layerDef=AG_LAYERS.find(l=>l.id===id);
@@ -2255,6 +2286,31 @@ function toggleAgLayer(id,enabled){
       layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: ESSEX TOWNS STORM SEWER');});
       layer.addTo(map);
       agLayerInstances[id]=layer;
+      return;
+    }
+    if(id==='kitchener_storm'){
+      const base='https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/';
+      const group=buildMultiFeatureLayerGroup([
+        {url:base+'Storm_Pipes/FeatureServer/0',color:'#4488ff',weight:2,label:'Storm Pipe'},
+        {url:base+'Storm_Manholes/FeatureServer/0',color:'#ffd600',label:'Storm Manhole'},
+        {url:base+'Storm_Catchbasins/FeatureServer/0',color:'#00e5ff',label:'Catch Basin'},
+        {url:base+'Storm_Outlets/FeatureServer/0',color:'#ff6b35',label:'Outlet'},
+      ],layerDef.opacity||1,statusEl,'KITCHENER STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
+      return;
+    }
+    if(id==='waterloo_storm'){
+      const base='https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/';
+      const group=buildMultiFeatureLayerGroup([
+        {url:base+'Stormwater_Gravity_Mains/FeatureServer/0',color:'#4488ff',weight:2,label:'Gravity Main'},
+        {url:base+'Stormwater_Manholes/FeatureServer/0',color:'#ffd600',label:'Manhole'},
+        {url:base+'Stormwater_Catch_Basins/FeatureServer/0',color:'#00e5ff',label:'Catch Basin'},
+        {url:base+'Stormwater_Outlets/FeatureServer/0',color:'#ff6b35',label:'Outlet'},
+        {url:base+'Stormwater_Ponds/FeatureServer/0',color:'#39ff14',weight:1.5,label:'SWM Pond'},
+      ],layerDef.opacity||1,statusEl,'WATERLOO STORM SEWER');
+      group.addTo(map);
+      agLayerInstances[id]=group;
       return;
     }
     if(id==='aafc_crop'){
