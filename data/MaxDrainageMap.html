@@ -533,6 +533,8 @@ document.addEventListener('DOMContentLoaded',function(){
     <button class="hbtn" id="btnDraw" onclick="toggleDrawMode()">✏ DRAW</button>
     <button class="hbtn" id="btnCrosshair" onclick="toggleCrosshair()">✛ IDENTIFY</button>
     <button class="hbtn" id="btnMeasure" onclick="toggleMeasure()">📏 MEASURE</button>
+    <button class="hbtn" id="btnQueryPhotos" onclick="queryPhotoArea()" title="Find photos taken within the current map view">📷 QUERY PHOTOS</button>
+    <button class="hbtn" onclick="fitAll()" title="Zoom/pan to fit everything currently loaded">⊞ FIT ALL</button>
 
     <div class="hmenu" id="hmSearch">
       <button class="hbtn" onclick="toggleHMenu('menuSearch')">🔍 SEARCH<span class="caret">▼</span></button>
@@ -542,10 +544,6 @@ document.addEventListener('DOMContentLoaded',function(){
         <button class="hbtn" id="btnDrainSearch" onclick="openDrainSearch()">💧 Drain</button>
         <button class="hbtn" id="btnShortRoll" onclick="openShortRollPanel()">📋 Short Roll</button>
         <button class="hbtn" id="btnAddrSearch" onclick="openAddrSearch()">📍 Address</button>
-        <div class="hmenu-sep"></div>
-        <div class="hmenu-lbl">View</div>
-        <button class="hbtn" id="btnQueryPhotos" onclick="queryPhotoArea()">📷 Query Photos</button>
-        <button class="hbtn" onclick="fitAll()">⊞ Fit All</button>
       </div>
     </div>
 
@@ -571,7 +569,7 @@ document.addEventListener('DOMContentLoaded',function(){
       <button class="hbtn" onclick="toggleHMenu('menuExport')" style="border-color:rgba(255,214,0,.4);color:var(--yellow)">⬇ EXPORT<span class="caret">▼</span></button>
       <div class="hmenu-drop right" id="menuExport">
         <div class="hmenu-lbl">Drawing &amp; imagery</div>
-        <button class="hbtn" id="btnExportDXF" onclick="exportDXF()" style="color:var(--yellow)">📐 DXF</button>
+        <button class="hbtn" id="btnExportDXF" onclick="exportDXF()" style="color:var(--yellow)" title="Exports parcels plus every toggled-on overlay layer (drains, soil, storm sewer, etc.) as one DXF">📐 DXF (Parcels + Overlays)</button>
         <button class="hbtn" onclick="exportAirphoto()" style="color:var(--yellow)">🛰 Airphoto</button>
         <div class="hmenu-sep"></div>
         <div class="hmenu-lbl">Elevation</div>
@@ -5383,7 +5381,7 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
     </div>
     <div style="padding:8px 16px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0">
       <button onclick="exportSWMHYMOcsv()" style="padding:6px 14px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:#38bdf8;font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600">⬇ CSV</button>
-      <button onclick="exportValidationDXF()" style="padding:6px 14px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:4px;color:#ffd600;font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600;white-space:nowrap">📐 VALIDATION DXF</button>
+      <button onclick="exportValidationDXF()" title="Exports the merged land-use polygons shown in this table, for cross-checking against the source imagery in CAD" style="padding:6px 14px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:4px;color:#ffd600;font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600;white-space:nowrap">📐 DXF (Land Use Validation)</button>
       <div style="flex:1;font-family:var(--font-ui);font-size:11.5px;color:var(--muted);display:flex;align-items:center">Source: ${source||'Ontario Land Cover V1'} × OMAFRA Soil Survey Complex</div>
     </div>`;
 
@@ -5698,7 +5696,7 @@ function showSoilResults(hsgTotals,soilNameTotals,boundaryHa,hsgField,soilNameFi
       ${soilRows}
     </div>
     <div style="padding:8px 14px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:6px;align-items:center">
-      <button onclick="exportSoilDXF()" style="padding:5px 11px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:3px;color:#ffd600;font-size:12px;cursor:pointer;font-family:var(--font-ui);font-weight:600;letter-spacing:.2px;white-space:nowrap">📐 EXPORT SOIL DXF</button>
+      <button onclick="exportSoilDXF()" title="Exports the HSG soil polygons shown in this table as their own DXF, colour-coded by group" style="padding:5px 11px;background:var(--panel2);border:1px solid rgba(255,214,0,.4);border-radius:3px;color:#ffd600;font-size:12px;cursor:pointer;font-family:var(--font-ui);font-weight:600;letter-spacing:.2px;white-space:nowrap">📐 DXF (Soil Classes)</button>
       <div style="flex:1;font-family:var(--font-ui);font-size:11px;color:var(--muted)">Source: OMAFRA Soil Survey Complex</div>
     </div>`;
 
