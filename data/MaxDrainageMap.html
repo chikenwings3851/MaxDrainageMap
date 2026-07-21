@@ -417,6 +417,31 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 .token-modal-btn.skip{color:var(--muted);}
 .token-modal-btn.skip:hover{border-color:var(--muted);color:var(--text);}
 
+/* GENERIC CONFIRM MODAL (used before destructive actions like CLEAR) */
+.confirm-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:99999;
+  display:flex;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+}
+.confirm-modal-overlay.hidden{display:none;}
+.confirm-modal{
+  background:var(--panel);border:1px solid var(--border2);border-radius:8px;
+  padding:24px 26px;width:380px;max-width:90vw;
+  box-shadow:0 0 60px rgba(0,0,0,.5);
+  font-family:var(--font-ui);
+}
+.confirm-modal h3{font-size:15px;font-weight:700;color:var(--text);margin:0 0 10px;letter-spacing:.3px;}
+.confirm-modal p{font-size:13.5px;color:var(--muted);line-height:1.55;margin:0 0 20px;}
+.confirm-modal-btns{display:flex;gap:8px;justify-content:flex-end;}
+.confirm-modal-btn{
+  background:var(--panel2);border:1px solid var(--border2);color:var(--text);
+  padding:8px 16px;font-family:var(--font-ui);font-weight:700;font-size:13px;
+  letter-spacing:.3px;cursor:pointer;border-radius:4px;transition:all .15s;
+}
+.confirm-modal-btn.cancel:hover{border-color:var(--muted);color:var(--text);}
+.confirm-modal-btn.danger{border-color:#ff4444;color:#ff8080;background:rgba(255,68,68,.08);}
+.confirm-modal-btn.danger:hover{background:rgba(255,68,68,.18);}
+
 /* ── MOBILE RESPONSIVE ──────────────────────────────────── */
 @media (max-width: 768px){
   header{padding:6px 10px;gap:8px;}
@@ -487,6 +512,18 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
         <button type="submit" class="token-modal-btn primary">CONFIRM TOKEN ›</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- GENERIC CONFIRM MODAL — shown before destructive actions (e.g. CLEAR) when there's real work to lose -->
+<div class="confirm-modal-overlay hidden" id="confirmModalOverlay">
+  <div class="confirm-modal">
+    <h3 id="confirmModalTitle">Are you sure?</h3>
+    <p id="confirmModalMsg"></p>
+    <div class="confirm-modal-btns">
+      <button type="button" class="confirm-modal-btn cancel" id="confirmModalCancelBtn">CANCEL</button>
+      <button type="button" class="confirm-modal-btn danger" id="confirmModalOkBtn">CONFIRM</button>
+    </div>
   </div>
 </div>
 
@@ -3870,12 +3907,46 @@ function fitAll(){
   if(pts.length===1){map.setView(pts[0],15);return;}
   map.fitBounds(L.latLngBounds(pts),{padding:[50,50]});
 }
+// Only nags for confirmation when there's actually something to lose — an empty
+// session just clears instantly, same as before this was added.
 function clearAll(){
+  const hasWork = photos.length>0 || markers.length>0 || !!pathLine ||
+    (typeof drawnItems!=='undefined' && drawnItems.getLayers().length>0);
+  if(!hasWork){ clearAllConfirmed(); return; }
+  askConfirm('Clear everything?',
+    'This removes all loaded photos, drawings, and parcel selections. This can\'t be undone.',
+    'CLEAR', clearAllConfirmed);
+}
+function clearAllConfirmed(){
   photos=[];markers.forEach(m=>m.marker.remove());markers=[];activeIdx=null;
   if(pathLine){map.removeLayer(pathLine);pathLine=null;}
   clearDrawings();renderList();updateStats();
   document.getElementById('emptyState').classList.remove('hidden');
 }
+
+// Generic yes/no confirmation modal, reused wherever a destructive action needs a gate.
+let _confirmActionCallback=null;
+function askConfirm(title, message, okLabel, onConfirm){
+  document.getElementById('confirmModalTitle').textContent=title;
+  document.getElementById('confirmModalMsg').textContent=message;
+  document.getElementById('confirmModalOkBtn').textContent=okLabel||'CONFIRM';
+  _confirmActionCallback=onConfirm;
+  document.getElementById('confirmModalOverlay').classList.remove('hidden');
+}
+function closeConfirmModal(){
+  document.getElementById('confirmModalOverlay').classList.add('hidden');
+  _confirmActionCallback=null;
+}
+document.addEventListener('DOMContentLoaded',function(){
+  const cancelBtn=document.getElementById('confirmModalCancelBtn');
+  const okBtn=document.getElementById('confirmModalOkBtn');
+  if(cancelBtn) cancelBtn.onclick=closeConfirmModal;
+  if(okBtn) okBtn.onclick=function(){
+    const cb=_confirmActionCallback;
+    closeConfirmModal();
+    if(cb) cb();
+  };
+});
 // ═══════════════════════════════════════════════════
 // MEASURE TOOL
 // Distances/areas are computed in UTM (NAD83) — the same projection
