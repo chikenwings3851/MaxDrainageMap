@@ -2244,6 +2244,22 @@ function toggleAgLayer(id,enabled){
       agLayerInstances[id]=fl;
       return;
     }
+    if(id==='drains'){
+      // Same "Constructed Drain" service as dfo_drain (OPEN01_URL+'/7') — built as its own
+      // featureLayer (not the generic dynamicMapLayer fallback below) specifically so the real
+      // drain name can be read per-feature and shown on hover, same as DFO Drain Classification
+      // and the Essex-specific drains layer already do.
+      const fl=L.esri.featureLayer({
+        url:OPEN01_URL+'/7', simplifyFactor:0.3, precision:5,
+        style:()=>({color:layerDef.color||'#00bfff',weight:2.5,opacity:layerDef.opacity||0.85}),
+        onEachFeature:(f,layer)=>{const name=f.properties?.OFFICIAL_NAME||'Unnamed drain';layer.bindTooltip(name,{sticky:true,className:'ws-tooltip'});},
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
     if(id==='dfo_drain'){
       const DFO_COLORS={'C':'#c850ff','D':'#ff8800','E1':'#ffdd00','E2':'#00e5cc','F':'#44aa44','NR':'#aaaaaa'};
       const DFO_DASH=new Set(['F','NR']);
