@@ -7452,7 +7452,10 @@ async function exportDTMTiff(){
   const sr=26900+zone;
   const wM=xmax-xmin, hM=ymax-ymin;
 
-  // Big areas are auto-split into 3km lossless sheets (one 3km sheet ≈ 140MB TIFF).
+  // Big areas are fetched in 3km chunks (one 3km chunk ≈ 140MB of elevation data) to keep each
+  // individual server request/decode a manageable size, but they all land in ONE shared grid and
+  // come out as a single merged GeoTIFF — no more picking up 2+ separate files and stitching them
+  // yourself in another program afterward.
   const SHEET=3000, MAX_SHEETS=16;
   const nSX=Math.ceil(wM/SHEET), nSY=Math.ceil(hM/SHEET), total=nSX*nSY;
   if(total>MAX_SHEETS){
@@ -7463,41 +7466,51 @@ async function exportDTMTiff(){
     showToast('⚠ LERC decoder not loaded — using fallback export');
     return exportDTMTiffStretched();
   }
-  progressStart(total>1?`Lossless DTM — ${total} sheets`:'Lossless DTM export',{cancellable:true});
-  if(total>1) progressSet(0,`Splitting into ${total} × 3km sheets — allow multiple downloads if asked`);
+  progressStart(total>1?`Lossless DTM — merging ${total} sheets`:'Lossless DTM export',{cancellable:true});
+
+  const W=Math.round(wM/PS), H=Math.round(hM/PS);
+  const elev=new Float32Array(W*H); elev.fill(-9999);
+  let anyValid=false;
 
   try{
-    let sheetNo=0, saved=0;
+    let sheetNo=0;
     for(let sy=0;sy<nSY;sy++){
       for(let sx=0;sx<nSX;sx++){
         sheetNo++;
         const sx0=xmin+sx*SHEET, sx1=Math.min(xmax,sx0+SHEET);
         const sy1=ymax-sy*SHEET, sy0=Math.max(ymin,sy1-SHEET);
-        const label=total>1?`_R${sy+1}C${sx+1}`:'';
-        if(progressCancelled()){ progressDone(`⚠ CANCELLED — ${saved} sheet${saved!==1?'s':''} saved`); return; }
-        const ok=await exportOneLosslessSheet(sx0,sy0,sx1,sy1,sr,zone,label,sheetNo,total);
-        if(ok) saved++;
-        await new Promise(r=>setTimeout(r,500));   // let the browser breathe between downloads
+        if(progressCancelled()){ progressDone('⚠ CANCELLED'); return; }
+        const ok=await fetchSheetIntoGrid(elev,W,H,xmin,ymax,PS,sx0,sy0,sx1,sy1,sr,sheetNo,total);
+        if(ok) anyValid=true;
       }
     }
-    if(saved) progressDone(`✓ LOSSLESS DTM COMPLETE — ${saved}/${total} sheet${total>1?'s':''} @ 0.5m native float32`);
-    else progressDone('⚠ NO LiDAR COVERAGE IN THIS AREA');
+    if(!anyValid){ progressDone('⚠ NO LiDAR COVERAGE IN THIS AREA'); return; }
+    progressSet(96, total>1?`Merged ${total} sheets — writing one GeoTIFF…`:'Writing GeoTIFF…');
+    const buf=buildFloat32GeoTIFF(elev,W,H,PS,PS,xmin,ymax,sr);
+    const blob=new Blob([buf],{type:'image/tiff'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`DTM_native0.5m_UTM${zone}N_${Date.now()}.tif`;
+    a.click(); URL.revokeObjectURL(a.href);
+    progressDone(`✓ LOSSLESS DTM COMPLETE — ${total>1?total+' sheets merged into one file':'one file'} @ 0.5m native float32`);
   }catch(err){
     console.warn('Lossless LERC path failed:',err);
     progressHide();
     if(total===1){ showToast('⚠ LOSSLESS BLOCKED ('+err.message+') — using fallback'); return exportDTMTiffStretched(); }
-    showToast('⚠ SHEET EXPORT FAILED: '+err.message);
+    showToast('⚠ EXPORT FAILED: '+err.message);
   }
 }
 
-// One 3km (or smaller) lossless sheet: chunked LERC fetch → float32 GeoTIFF
-async function exportOneLosslessSheet(xmin,ymin,xmax,ymax,sr,zone,label,sheetNo,total){
-  const PS=0.5;
+// Fetches one 3km (or smaller) sheet's elevation data in chunked LERC requests and writes it
+// directly into the shared full-extent grid at its correct global pixel offset — this is what
+// lets a multi-sheet area come out as one merged GeoTIFF instead of N separate downloads.
+async function fetchSheetIntoGrid(elev,gridW,gridH,gridXmin,gridYmax,PS,xmin,ymin,xmax,ymax,sr,sheetNo,total){
   const W=Math.round((xmax-xmin)/PS), H=Math.round((ymax-ymin)/PS);
   if(W<2||H<2) return false;
+  const goX=Math.round((xmin-gridXmin)/PS);   // this sheet's offset within the combined grid
+  const goY=Math.round((gridYmax-ymax)/PS);
   const CHUNK=2000;
   const nCX=Math.ceil(W/CHUNK), nCY=Math.ceil(H/CHUNK);
-  const elev=new Float32Array(W*H); elev.fill(-9999);
   let chunkNo=0, valid=0;
   for(let cy=0;cy<nCY;cy++){
     for(let cx=0;cx<nCX;cx++){
@@ -7511,7 +7524,7 @@ async function exportOneLosslessSheet(xmin,ymin,xmax,ymax,sr,zone,label,sheetNo,
                 `&format=lerc&interpolation=RSP_NearestNeighbor&f=image`;
       if(progressCancelled()) throw new Error('cancelled');
       const nChunks=nCX*nCY;
-      const overall=((sheetNo-1)+(chunkNo-1)/nChunks)/total*100;
+      const overall=((sheetNo-1)+(chunkNo-1)/nChunks)/total*96;
       progressSet(overall, total>1
         ? `Sheet ${sheetNo}/${total} · chunk ${chunkNo}/${nChunks} · ${W}×${H}px @ 0.5m`
         : `Chunk ${chunkNo}/${nChunks} · ${W}×${H}px @ 0.5m`);
@@ -7523,25 +7536,17 @@ async function exportOneLosslessSheet(xmin,ymin,xmax,ymax,sr,zone,label,sheetNo,
       catch(de){ throw new Error('LERC decode failed: '+de.message); }
       const px=dec.pixels[0], mask=dec.maskData||dec.mask;
       for(let r=0;r<dec.height;r++){
-        const dstRow=py0+r; if(dstRow>=H) break;
+        const dstRow=goY+py0+r; if(dstRow>=gridH) break;
         for(let cc=0;cc<dec.width;cc++){
-          const dstCol=px0+cc; if(dstCol>=W) break;
+          const dstCol=goX+px0+cc; if(dstCol>=gridW) break;
           const i=r*dec.width+cc;
           if(mask&&!mask[i]) continue;
-          elev[dstRow*W+dstCol]=px[i]; valid++;
+          elev[dstRow*gridW+dstCol]=px[i]; valid++;
         }
       }
     }
   }
-  if(!valid){ progressSet(sheetNo/total*100,`Sheet ${sheetNo}/${total}: no LiDAR — skipped`); return false; }
-  progressSet(sheetNo/total*100, total>1?`Sheet ${sheetNo}/${total} — writing GeoTIFF…`:'Writing GeoTIFF…');
-  const buf=buildFloat32GeoTIFF(elev,W,H,PS,PS,xmin,ymax,sr);
-  const blob=new Blob([buf],{type:'image/tiff'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`DTM_native0.5m_UTM${zone}N${label}_${Date.now()}.tif`;
-  a.click(); URL.revokeObjectURL(a.href);
-  return true;
+  return valid>0;
 }
 
 // ═══════════════════════════════════════════════════
