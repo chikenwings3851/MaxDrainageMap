@@ -7200,86 +7200,105 @@ async function exportAirphoto(){
   const sr=26900+zone;
 
   // Ontario imagery is ~16–20 cm native — always export at this native 0.2 m/px resolution, no
-  // matter how large the drawn area is. The only real ceiling is total image memory (see
-  // MAX_BYTES below), not an arbitrary pixel-dimension cap that used to silently coarsen (reduce
-  // resolution below native) for anything bigger than a small ~1.6×1.6km area.
+  // matter how large the drawn area is. No arbitrary pixel-dimension cap here that used to
+  // silently coarsen (reduce resolution below native) for anything bigger than ~1.6×1.6km —
+  // see the section-splitting below for how a large area stays lossless instead.
   const mpp=0.2;
   const xmin=Math.floor(Math.min(xA,xB,xC,xD)/mpp)*mpp, xmax=Math.ceil(Math.max(xA,xB,xC,xD)/mpp)*mpp;
   const ymin=Math.floor(Math.min(yA,yB,yC,yD)/mpp)*mpp, ymax=Math.ceil(Math.max(yA,yB,yC,yD)/mpp)*mpp;
   const wM=xmax-xmin, hM=ymax-ymin;
-  const W=Math.round(wM/mpp), H=Math.round(hM/mpp);
 
-  // One real ceiling: total output bytes, not a canvas-dimension limit — the fetch/decode loop
-  // below never creates a canvas bigger than one CHUNK, so it isn't subject to a browser's canvas
-  // size cap. ~2.5GB keeps a single in-memory buffer comfortably safe on a normal machine, which
-  // at native 0.2m/px is roughly 5.7×5.7km — well beyond a typical drain project boundary.
-  const MAX_BYTES=2_500_000_000;
-  if(W*H*3>MAX_BYTES){
-    const maxKm=(Math.sqrt(MAX_BYTES/3)*mpp/1000).toFixed(1);
-    showToast(`⚠ AREA TOO LARGE FOR NATIVE 0.2M RESOLUTION (≈${maxKm}×${maxKm}km max) — draw smaller`);
+  // No hard "too big, draw smaller" wall — a large area is covered by multiple 5km sections
+  // instead, each one still merged internally from many small tile fetches into ONE native-
+  // resolution GeoTIFF (same ~2.5GB-per-file safe budget as before, just applied per section
+  // rather than to the whole request). Only truly enormous areas (>16 sections, ≈20×20km) get
+  // turned away, same safety-cap idea as the DTM export's own sheet limit.
+  const SECTION=5000, MAX_SECTIONS=16;
+  const nSX=Math.ceil(wM/SECTION), nSY=Math.ceil(hM/SECTION), total=nSX*nSY;
+  if(total>MAX_SECTIONS){
+    showToast(`⚠ AREA = ${total} sections — max ${MAX_SECTIONS} (≈20×20 km) per run. Draw smaller.`);
     return;
   }
 
-  progressStart('Airphoto export (lossless)',{cancellable:true});
-  progressSet(0, `${W}×${H}px @ ${mpp}m/px · UTM ${zone}N`);
+  progressStart(total>1?`Airphoto export — ${total} sections @ native 0.2m`:'Airphoto export (lossless)',{cancellable:true});
 
   try{
-    const rgb=new Uint8Array(W*H*3);
-    const CHUNK=2048;
-    const nCX=Math.ceil(W/CHUNK), nCY=Math.ceil(H/CHUNK), total=nCX*nCY;
-    // Reused scratch canvas — always ≤ CHUNK×CHUNK, never sized to the full requested area, so
-    // this never hits a browser's canvas dimension/area limit no matter how big the export is
-    // (that limit, not memory, was the real reason the old code had to coarsen).
-    const cv=document.createElement('canvas'); cv.width=CHUNK; cv.height=CHUNK;
-    const ctx=cv.getContext('2d',{willReadFrequently:true});
-    let done=0;
-
-    for(let cy=0;cy<nCY;cy++){
-      for(let cx=0;cx<nCX;cx++){
-        if(progressCancelled()){ progressDone('⚠ AIRPHOTO CANCELLED'); return; }
-        const px0=cx*CHUNK, py0=cy*CHUNK;
-        const cw=Math.min(CHUNK,W-px0), ch=Math.min(CHUNK,H-py0);
-        const bx0=xmin+px0*mpp, bx1=bx0+cw*mpp;
-        const by1=ymax-py0*mpp, by0=by1-ch*mpp;
-        const url=`${AIRPHOTO_SVC}/export?bbox=${bx0},${by0},${bx1},${by1}`+
-                  `&bboxSR=${sr}&imageSR=${sr}&size=${cw},${ch}`+
-                  `&format=png24&transparent=false&f=image`;
-        const resp=await fetch(url,{signal:AbortSignal.timeout(60000)});
-        if(!resp.ok) throw new Error('export HTTP '+resp.status);
-        const blob=await resp.blob();
-        if(blob.type.includes('json')) throw new Error('service returned an error, not an image');
-        // colorSpaceConversion:'none' keeps the pixels exactly as delivered
-        const bmp=await createImageBitmap(blob,{colorSpaceConversion:'none'});
-        ctx.clearRect(0,0,CHUNK,CHUNK);
-        ctx.drawImage(bmp,0,0);
-        bmp.close&&bmp.close();
-        const chunkRgba=ctx.getImageData(0,0,cw,ch).data;
-        for(let r=0;r<ch;r++){
-          const dstRowBase=(py0+r)*W, srcRowBase=r*cw;
-          for(let c=0;c<cw;c++){
-            const s=(srcRowBase+c)*4, d=(dstRowBase+px0+c)*3;
-            rgb[d]=chunkRgba[s]; rgb[d+1]=chunkRgba[s+1]; rgb[d+2]=chunkRgba[s+2];
-          }
-        }
-        done++;
-        progressSet(done/total*92, `Chunk ${done}/${total} · ${mpp}m/px native`);
+    let sectionNo=0, saved=0;
+    for(let sy=0;sy<nSY;sy++){
+      for(let sx=0;sx<nSX;sx++){
+        sectionNo++;
+        const sx0=xmin+sx*SECTION, sx1=Math.min(xmax,sx0+SECTION);
+        const sy1=ymax-sy*SECTION, sy0=Math.max(ymin,sy1-SECTION);
+        const label=total>1?`_S${sy+1}-${sx+1}`:'';
+        if(progressCancelled()){ progressDone(`⚠ CANCELLED — ${saved} section${saved!==1?'s':''} saved`); return; }
+        const ok=await exportOneAirphotoSection(sx0,sy0,sx1,sy1,sr,zone,mpp,label,sectionNo,total);
+        if(ok) saved++;
       }
     }
-
-    progressSet(95,'Writing GeoTIFF…');
-    const buf=buildRGBGeoTIFF(rgb,W,H,mpp,mpp,xmin,ymax,sr);
-    const fn=`Airphoto_${mpp}m_UTM${zone}N_${new Date().toISOString().slice(0,10)}.tif`;
-    const blob=new Blob([buf],{type:'image/tiff'});
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-    progressDone(`✓ ${fn} · ${W}×${H}px · ${mpp}m/px native`);
+    if(saved) progressDone(`✓ AIRPHOTO COMPLETE — ${saved}/${total} section${total>1?'s':''} @ ${mpp}m/px native`);
+    else progressDone('⚠ EXPORT FAILED — no sections saved');
   }catch(err){
     console.warn('Lossless airphoto export failed, falling back to tiles:',err);
     progressHide();
-    showToast('⚠ LOSSLESS BLOCKED ('+err.message+') — using tile fallback');
-    return exportAirphotoTiles();
+    if(total===1){ showToast('⚠ LOSSLESS BLOCKED ('+err.message+') — using tile fallback'); return exportAirphotoTiles(); }
+    showToast('⚠ SECTION EXPORT FAILED: '+err.message);
   }
+}
+
+// One 5km (or smaller) section: chunked tile fetch → one merged native-resolution GeoTIFF.
+// Same reused-scratch-canvas trick as before (never sized to the whole section, only ever one
+// CHUNK at a time) so this isn't subject to a browser's canvas dimension/area limit.
+async function exportOneAirphotoSection(xmin,ymin,xmax,ymax,sr,zone,mpp,label,sectionNo,total){
+  const W=Math.round((xmax-xmin)/mpp), H=Math.round((ymax-ymin)/mpp);
+  if(W<2||H<2) return false;
+  const rgb=new Uint8Array(W*H*3);
+  const CHUNK=2048;
+  const nCX=Math.ceil(W/CHUNK), nCY=Math.ceil(H/CHUNK), nChunks=nCX*nCY;
+  const cv=document.createElement('canvas'); cv.width=CHUNK; cv.height=CHUNK;
+  const ctx=cv.getContext('2d',{willReadFrequently:true});
+  let chunkNo=0;
+  for(let cy=0;cy<nCY;cy++){
+    for(let cx=0;cx<nCX;cx++){
+      chunkNo++;
+      const px0=cx*CHUNK, py0=cy*CHUNK;
+      const cw=Math.min(CHUNK,W-px0), ch=Math.min(CHUNK,H-py0);
+      const bx0=xmin+px0*mpp, bx1=bx0+cw*mpp;
+      const by1=ymax-py0*mpp, by0=by1-ch*mpp;
+      const url=`${AIRPHOTO_SVC}/export?bbox=${bx0},${by0},${bx1},${by1}`+
+                `&bboxSR=${sr}&imageSR=${sr}&size=${cw},${ch}`+
+                `&format=png24&transparent=false&f=image`;
+      if(progressCancelled()) throw new Error('cancelled');
+      const overall=((sectionNo-1)+(chunkNo-1)/nChunks)/total*92;
+      progressSet(overall, total>1
+        ? `Section ${sectionNo}/${total} · chunk ${chunkNo}/${nChunks} · ${mpp}m/px native`
+        : `Chunk ${chunkNo}/${nChunks} · ${mpp}m/px native`);
+      const resp=await fetch(url,{signal:AbortSignal.timeout(60000)});
+      if(!resp.ok) throw new Error('export HTTP '+resp.status);
+      const blob=await resp.blob();
+      if(blob.type.includes('json')) throw new Error('service returned an error, not an image');
+      // colorSpaceConversion:'none' keeps the pixels exactly as delivered
+      const bmp=await createImageBitmap(blob,{colorSpaceConversion:'none'});
+      ctx.clearRect(0,0,CHUNK,CHUNK);
+      ctx.drawImage(bmp,0,0);
+      bmp.close&&bmp.close();
+      const chunkRgba=ctx.getImageData(0,0,cw,ch).data;
+      for(let r=0;r<ch;r++){
+        const dstRowBase=(py0+r)*W, srcRowBase=r*cw;
+        for(let c=0;c<cw;c++){
+          const s=(srcRowBase+c)*4, d=(dstRowBase+px0+c)*3;
+          rgb[d]=chunkRgba[s]; rgb[d+1]=chunkRgba[s+1]; rgb[d+2]=chunkRgba[s+2];
+        }
+      }
+    }
+  }
+  progressSet(sectionNo/total*92, total>1?`Section ${sectionNo}/${total} — writing GeoTIFF…`:'Writing GeoTIFF…');
+  const buf=buildRGBGeoTIFF(rgb,W,H,mpp,mpp,xmin,ymax,sr);
+  const blob=new Blob([buf],{type:'image/tiff'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Airphoto_${mpp}m_UTM${zone}N${label}_${new Date().toISOString().slice(0,10)}.tif`;
+  a.click(); URL.revokeObjectURL(a.href);
+  return true;
 }
 
 // RGB GeoTIFF in a projected CRS — same GDAL-matching structure as the DTM writer
