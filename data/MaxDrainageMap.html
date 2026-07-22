@@ -7199,32 +7199,39 @@ async function exportAirphoto(){
   const [xD,yD]=wgs84ToUTM17N(N,W_);
   const sr=26900+zone;
 
-  // Ontario imagery is ~16–20 cm native; target 0.2 m/px and snap to that grid
-  const TARGET=0.2, MAXDIM=8000;
-  let mpp=TARGET;
-  let xmin=Math.floor(Math.min(xA,xB,xC,xD)/mpp)*mpp, xmax=Math.ceil(Math.max(xA,xB,xC,xD)/mpp)*mpp;
-  let ymin=Math.floor(Math.min(yA,yB,yC,yD)/mpp)*mpp, ymax=Math.ceil(Math.max(yA,yB,yC,yD)/mpp)*mpp;
+  // Ontario imagery is ~16–20 cm native — always export at this native 0.2 m/px resolution, no
+  // matter how large the drawn area is. The only real ceiling is total image memory (see
+  // MAX_BYTES below), not an arbitrary pixel-dimension cap that used to silently coarsen (reduce
+  // resolution below native) for anything bigger than a small ~1.6×1.6km area.
+  const mpp=0.2;
+  const xmin=Math.floor(Math.min(xA,xB,xC,xD)/mpp)*mpp, xmax=Math.ceil(Math.max(xA,xB,xC,xD)/mpp)*mpp;
+  const ymin=Math.floor(Math.min(yA,yB,yC,yD)/mpp)*mpp, ymax=Math.ceil(Math.max(yA,yB,yC,yD)/mpp)*mpp;
   const wM=xmax-xmin, hM=ymax-ymin;
-  let W=Math.round(wM/mpp), H=Math.round(hM/mpp);
+  const W=Math.round(wM/mpp), H=Math.round(hM/mpp);
 
-  // Too big for browser memory → coarsen, and say so plainly rather than silently
-  let coarsened=false;
-  if(Math.max(W,H)>MAXDIM){
-    mpp=Math.max(wM,hM)/MAXDIM;
-    xmin=Math.floor(Math.min(xA,xB,xC,xD)/mpp)*mpp; xmax=Math.ceil(Math.max(xA,xB,xC,xD)/mpp)*mpp;
-    ymin=Math.floor(Math.min(yA,yB,yC,yD)/mpp)*mpp; ymax=Math.ceil(Math.max(yA,yB,yC,yD)/mpp)*mpp;
-    W=Math.round((xmax-xmin)/mpp); H=Math.round((ymax-ymin)/mpp);
-    coarsened=true;
+  // One real ceiling: total output bytes, not a canvas-dimension limit — the fetch/decode loop
+  // below never creates a canvas bigger than one CHUNK, so it isn't subject to a browser's canvas
+  // size cap. ~2.5GB keeps a single in-memory buffer comfortably safe on a normal machine, which
+  // at native 0.2m/px is roughly 5.7×5.7km — well beyond a typical drain project boundary.
+  const MAX_BYTES=2_500_000_000;
+  if(W*H*3>MAX_BYTES){
+    const maxKm=(Math.sqrt(MAX_BYTES/3)*mpp/1000).toFixed(1);
+    showToast(`⚠ AREA TOO LARGE FOR NATIVE 0.2M RESOLUTION (≈${maxKm}×${maxKm}km max) — draw smaller`);
+    return;
   }
 
   progressStart('Airphoto export (lossless)',{cancellable:true});
-  progressSet(0, `${W}×${H}px @ ${mpp.toFixed(2)} m/px · UTM ${zone}N` + (coarsened?' · coarsened to fit':''));
+  progressSet(0, `${W}×${H}px @ ${mpp}m/px · UTM ${zone}N`);
 
   try{
-    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-    const ctx=cv.getContext('2d',{willReadFrequently:true});
+    const rgb=new Uint8Array(W*H*3);
     const CHUNK=2048;
     const nCX=Math.ceil(W/CHUNK), nCY=Math.ceil(H/CHUNK), total=nCX*nCY;
+    // Reused scratch canvas — always ≤ CHUNK×CHUNK, never sized to the full requested area, so
+    // this never hits a browser's canvas dimension/area limit no matter how big the export is
+    // (that limit, not memory, was the real reason the old code had to coarsen).
+    const cv=document.createElement('canvas'); cv.width=CHUNK; cv.height=CHUNK;
+    const ctx=cv.getContext('2d',{willReadFrequently:true});
     let done=0;
 
     for(let cy=0;cy<nCY;cy++){
@@ -7243,25 +7250,30 @@ async function exportAirphoto(){
         if(blob.type.includes('json')) throw new Error('service returned an error, not an image');
         // colorSpaceConversion:'none' keeps the pixels exactly as delivered
         const bmp=await createImageBitmap(blob,{colorSpaceConversion:'none'});
-        ctx.drawImage(bmp,px0,py0);
+        ctx.clearRect(0,0,CHUNK,CHUNK);
+        ctx.drawImage(bmp,0,0);
         bmp.close&&bmp.close();
+        const chunkRgba=ctx.getImageData(0,0,cw,ch).data;
+        for(let r=0;r<ch;r++){
+          const dstRowBase=(py0+r)*W, srcRowBase=r*cw;
+          for(let c=0;c<cw;c++){
+            const s=(srcRowBase+c)*4, d=(dstRowBase+px0+c)*3;
+            rgb[d]=chunkRgba[s]; rgb[d+1]=chunkRgba[s+1]; rgb[d+2]=chunkRgba[s+2];
+          }
+        }
         done++;
-        progressSet(done/total*92, `Chunk ${done}/${total} · ${mpp.toFixed(2)} m/px`);
+        progressSet(done/total*92, `Chunk ${done}/${total} · ${mpp}m/px native`);
       }
     }
 
     progressSet(95,'Writing GeoTIFF…');
-    const rgba=ctx.getImageData(0,0,W,H).data;
-    const rgb=new Uint8Array(W*H*3);
-    for(let i=0;i<W*H;i++){ rgb[i*3]=rgba[i*4]; rgb[i*3+1]=rgba[i*4+1]; rgb[i*3+2]=rgba[i*4+2]; }
-
     const buf=buildRGBGeoTIFF(rgb,W,H,mpp,mpp,xmin,ymax,sr);
-    const fn=`Airphoto_${mpp.toFixed(2)}m_UTM${zone}N_${new Date().toISOString().slice(0,10)}.tif`;
+    const fn=`Airphoto_${mpp}m_UTM${zone}N_${new Date().toISOString().slice(0,10)}.tif`;
     const blob=new Blob([buf],{type:'image/tiff'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fn;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href),5000);
-    progressDone(`✓ ${fn} · ${W}×${H}px · ${mpp.toFixed(2)} m/px`+(coarsened?' (coarsened — draw a smaller area for 0.2m)':' · native'));
+    progressDone(`✓ ${fn} · ${W}×${H}px · ${mpp}m/px native`);
   }catch(err){
     console.warn('Lossless airphoto export failed, falling back to tiles:',err);
     progressHide();
