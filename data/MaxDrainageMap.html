@@ -441,6 +441,8 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
 .confirm-modal-btn.cancel:hover{border-color:var(--muted);color:var(--text);}
 .confirm-modal-btn.danger{border-color:#ff4444;color:#ff8080;background:rgba(255,68,68,.08);}
 .confirm-modal-btn.danger:hover{background:rgba(255,68,68,.18);}
+.confirm-modal-btn.primary{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,.07);}
+.confirm-modal-btn.primary:hover{background:rgba(0,229,255,.15);}
 
 /* ── MOBILE RESPONSIVE ──────────────────────────────────── */
 @media (max-width: 768px){
@@ -527,6 +529,22 @@ input[type=color]{width:30px;height:18px;padding:0 2px;border:1px solid var(--bo
   </div>
 </div>
 
+<!-- QUICK REPORT — a couple of details the report can't pull off the map itself -->
+<div class="confirm-modal-overlay hidden" id="quickReportModalOverlay">
+  <div class="confirm-modal" style="width:420px">
+    <h3>Quick Report</h3>
+    <p>A couple of details for the report header — everything else (area, soil, drains, land use, photos) is pulled from the loaded boundary automatically.</p>
+    <input type="text" id="qrDrainName" placeholder="Drain / project name" autocomplete="off"
+      style="width:100%;box-sizing:border-box;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:9px 11px;font-family:var(--font-ui);font-size:13.5px;border-radius:4px;outline:none;margin-bottom:10px;">
+    <textarea id="qrNotes" placeholder="Notes (optional)" rows="3"
+      style="width:100%;box-sizing:border-box;background:var(--panel2);border:1px solid var(--border2);color:var(--text);padding:9px 11px;font-family:var(--font-ui);font-size:13.5px;border-radius:4px;outline:none;resize:vertical;margin-bottom:16px;"></textarea>
+    <div class="confirm-modal-btns">
+      <button type="button" class="confirm-modal-btn cancel" onclick="closeQuickReportModal()">CANCEL</button>
+      <button type="button" class="confirm-modal-btn primary" onclick="generateQuickReport()">GENERATE ›</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function submitToken(){
   const raw=document.getElementById('tokenModalInput').value.trim();
@@ -599,6 +617,8 @@ document.addEventListener('DOMContentLoaded',function(){
         <select id="landCoverSrc" title="Land cover source for LAND USE table" style="display:none;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-ui);font-weight:600;font-size:12px;padding:5px 7px;border-radius:4px;cursor:pointer;">
           <option value="olc">OLC V1 (2020)</option>
         </select>
+        <div class="hmenu-sep" id="quickReportSep" style="display:none"></div>
+        <button class="hbtn" id="btnQuickReport" onclick="openQuickReportPrompt()" style="display:none;color:var(--accent)">⚡ Quick Report</button>
       </div>
     </div>
 
@@ -4711,6 +4731,8 @@ async function loadBoundaryFile(file){
     document.getElementById('analysisLbl').style.display='block';
     document.getElementById('landCoverLbl').style.display='block';
     document.getElementById('analysisHint').style.display='none';
+    document.getElementById('quickReportSep').style.display='block';
+    document.getElementById('btnQuickReport').style.display='inline-block';
     // Pop the ANALYSIS menu open so the newly-available tools are visible
     const am=document.getElementById('menuAnalysis');
     if(am && !am.classList.contains('open')) toggleHMenu('menuAnalysis');
@@ -4832,6 +4854,139 @@ async function queryLoadedBoundary(){
   map.fire(L.Draw.Event.CREATED,{layer:loadedBoundaryPoly,layerType:'polygon'});
 }
 
+// ── QUICK REPORT ──────────────────────────────────────────────────────────
+// One combined on-screen summary for the loaded boundary — area, HSG breakdown,
+// land use breakdown, drains found, and photos inside it — instead of running
+// three separate tools and reading three separate panels. Always re-runs all
+// three underlying analyses fresh rather than trusting any existing cache, so
+// the report can't accidentally describe a previously-loaded boundary.
+function openQuickReportPrompt(){
+  if(!loadedBoundaryPoly){ showToast('LOAD A BOUNDARY FIRST'); return; }
+  document.getElementById('qrDrainName').value='';
+  document.getElementById('qrNotes').value='';
+  document.getElementById('quickReportModalOverlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('qrDrainName').focus(),50);
+}
+function closeQuickReportModal(){
+  document.getElementById('quickReportModalOverlay').classList.add('hidden');
+}
+
+async function generateQuickReport(){
+  const drainName=document.getElementById('qrDrainName').value.trim();
+  const notes=document.getElementById('qrNotes').value.trim();
+  closeQuickReportModal();
+  if(!loadedBoundaryPoly){ showToast('LOAD A BOUNDARY FIRST'); return; }
+  const token=getLioToken();
+  if(!token){ showToast('PASTE AGMAPS TOKEN FIRST — needed for the soil/drain/land-use data'); return; }
+
+  try{
+    await querySoilAnalysis();
+    await queryDrainsInBoundary();
+    await querySWMHYMO();
+
+    progressStart('Building quick report');
+    progressSet(90,'Assembling…');
+
+    const latlngs=loadedBoundaryPoly.getLatLngs()[0];
+    const photosInside=photos.filter(p=>p.lat!==null&&pointInPoly(p.lat,p.lng,latlngs));
+
+    showQuickReportPanel({
+      drainName, notes,
+      boundaryHa: window._hsgBoundaryHa||0,
+      hsgTotals: window._hsgTotals||{},
+      drains: window._lastDrains||[],
+      swmhymoTable: window._swmhymoTable||null,
+      photosInside,
+    });
+    progressDone('✓ QUICK REPORT READY');
+  }catch(err){
+    progressFail('⚠ REPORT FAILED: '+err.message);
+    console.error('Quick report error:',err);
+  }
+}
+
+function showQuickReportPanel(data){
+  const {drainName,notes,boundaryHa,hsgTotals,drains,swmhymoTable,photosInside}=data;
+  // The three individual analysis panels already popped up as a side effect of re-running them
+  // above — this is meant to replace reading three separate panels with one, so close them.
+  ['drainResultsPanel','soilResultsPanel','swmhymoPanel'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.remove();
+  });
+  const existing=document.getElementById('quickReportPanel');
+  if(existing) existing.remove();
+
+  const hsgRows=Object.entries(hsgTotals).sort((a,b)=>b[1]-a[1]);
+
+  let luRows=[];
+  if(swmhymoTable){
+    const luTotals={};
+    SWMHYMO_LU.forEach(lu=>{ luTotals[lu]=HSG_ROWS.reduce((s,hsg)=>s+(swmhymoTable[hsg]?.[lu]||0),0); });
+    luRows=Object.entries(luTotals).filter(([,ha])=>ha>0.01).sort((a,b)=>b[1]-a[1]);
+  }
+
+  const dateStr=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
+  const pct=ha=>boundaryHa>0?(ha/boundaryHa*100).toFixed(1):'0.0';
+
+  const reportText=[
+    `QUICK REPORT — ${drainName||'Untitled'}`,
+    dateStr, '',
+    `AREA: ${boundaryHa.toFixed(2)} ha`, '',
+    'HYDROLOGIC SOIL GROUP:',
+    ...(hsgRows.length?hsgRows.map(([cls,ha])=>`  HSG ${cls}: ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (not available)']),
+    '',
+    'LAND USE:',
+    ...(luRows.length?luRows.map(([lu,ha])=>`  ${lu}: ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (not available)']),
+    '',
+    `MUNICIPAL DRAINS FOUND (${drains.length}):`,
+    ...(drains.length?drains.map(d=>`  ${d.name}${d.muni&&d.muni!=='—'?' — '+d.muni:''}`):['  (none found)']),
+    '',
+    `PHOTOS IN BOUNDARY: ${photosInside.length}`,
+    ...(notes?['','NOTES:',notes]:[]),
+  ].join('\n');
+
+  const photoThumbs=photosInside.slice(0,12).map(p=>
+    `<img src="${p.dataUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--border2)">`
+  ).join('');
+
+  const panel=document.createElement('div');
+  panel.id='quickReportPanel';
+  panel.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);width:640px;max-width:95vw;max-height:calc(100vh - 80px);background:var(--panel);border:1px solid var(--accent);border-radius:8px;z-index:9200;display:flex;flex-direction:column;box-shadow:0 4px 32px rgba(0,0,0,.7);overflow:hidden;font-family:var(--font-ui);';
+  panel.innerHTML=`
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--accent)">⚡ QUICK REPORT${drainName?' — '+escHtml(drainName):''}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${dateStr}</div>
+      </div>
+      <button onclick="document.getElementById('quickReportPanel').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
+    </div>
+    <div style="padding:16px 18px;overflow-y:auto;flex:1">
+      <div style="font-size:13px;color:var(--text);margin-bottom:14px"><b>Area:</b> ${boundaryHa.toFixed(2)} ha</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">HYDROLOGIC SOIL GROUP</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.7;margin-bottom:14px">${hsgRows.length?hsgRows.map(([cls,ha])=>`HSG ${cls}: ${ha.toFixed(2)} ha (${pct(ha)}%)`).join('<br>'):'<span style="color:var(--muted)">Not available</span>'}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">LAND USE</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.7;margin-bottom:14px">${luRows.length?luRows.map(([lu,ha])=>`${lu}: ${ha.toFixed(2)} ha (${pct(ha)}%)`).join('<br>'):'<span style="color:var(--muted)">Not available</span>'}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">MUNICIPAL DRAINS (${drains.length})</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.7;margin-bottom:14px">${drains.length?drains.map(d=>escHtml(d.name)+(d.muni&&d.muni!=='—'?' — '+escHtml(d.muni):'')).join('<br>'):'<span style="color:var(--muted)">None found</span>'}</div>
+
+      <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">PHOTOS IN BOUNDARY (${photosInside.length})</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${photoThumbs||'<span style="color:var(--muted);font-size:12.5px">None</span>'}</div>
+
+      ${notes?`<div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">NOTES</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.5;white-space:pre-wrap">${escHtml(notes)}</div>`:''}
+    </div>
+    <div style="padding:10px 18px;border-top:1px solid var(--border);flex-shrink:0">
+      <button id="qrCopyBtn" style="padding:7px 16px;background:var(--panel2);border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer">⧉ COPY REPORT TEXT</button>
+    </div>
+  `;
+  document.body.appendChild(panel);
+  document.getElementById('qrCopyBtn').onclick=()=>{
+    navigator.clipboard.writeText(reportText).then(()=>showToast('✓ REPORT COPIED')).catch(()=>showToast('⚠ COPY FAILED'));
+  };
+}
+
 async function queryDrainsInBoundary(){
   if(!loadedBoundaryPoly){ showToast('LOAD A BOUNDARY FIRST'); return; }
   const token=getLioToken();
@@ -4910,6 +5065,7 @@ async function queryDrainsInBoundary(){
     });
     drains.sort((a,b)=>a.name.localeCompare(b.name));
 
+    window._lastDrains=drains; // stashed for the Quick Report, same pattern as window._hsgTotals
     showDrainResults(drains);
     showToast(`✓ ${drains.length} DRAIN${drains.length!==1?'S':''} FOUND`);
   }catch(err){
