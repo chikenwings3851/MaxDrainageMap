@@ -4919,6 +4919,7 @@ async function generateQuickReport(){
       queryAreaClassBreakdown(SOIL_SURVEY_URL, null, {outField:'K_FACTOR1',classify:kFactorClassify}),
     ]);
     const ok=r=>r.status==='fulfilled'?r.value:null;
+    const okTotals=r=>ok(r)?.totals||{};
     [['DFO drain classification',dfoRes],['PSW/wetlands',pswRes],['conservation authority',caRes],
      ['municipal boundary',muniRes],['township',twpRes],['tile drainage',tileRes],
      ['controlled drainage',ctrlRes],['lots & concessions',lotsRes],
@@ -4930,24 +4931,34 @@ async function generateQuickReport(){
     const latlngs=loadedBoundaryPoly.getLatLngs()[0];
     const photosInside=photos.filter(p=>p.lat!==null&&pointInPoly(p.lat,p.lng,latlngs));
 
+    // Raw fetched features + classify functions stashed for reuse by the per-property Excel
+    // export (exportPropertyBreakdownXLS) — same convention as window._hsgTotals/_lastDrains
+    // below: last-computed report data cached on window for a later action to reuse without
+    // re-fetching every layer over the network a second time.
+    window._qrLayerData={
+      dfo: ok(dfoRes), psw: ok(pswRes), ca: ok(caRes), muni: ok(muniRes), twp: ok(twpRes),
+      tile: ok(tileRes), ctrl: ok(ctrlRes), cap: ok(capRes), soilDrain: ok(soilDrainRes), kFactor: ok(kFactorRes),
+      lots: ok(lotsRes),
+    };
+
     showQuickReportPanel({
       drainName, notes,
       boundaryHa: window._hsgBoundaryHa||0,
       hsgTotals: window._hsgTotals||{},
-      capTotals: ok(capRes)||{},
-      soilDrainClassTotals: ok(soilDrainRes)||{},
-      kFactorTotals: ok(kFactorRes)||{},
+      capTotals: okTotals(capRes),
+      soilDrainClassTotals: okTotals(soilDrainRes),
+      kFactorTotals: okTotals(kFactorRes),
       drains: window._lastDrains||[],
       swmhymoTable: window._swmhymoTable||null,
       photosInside,
-      dfoTotals: ok(dfoRes)||{},
-      pswTotals: ok(pswRes)||{},
-      conservationTotals: ok(caRes)||{},
-      municipalTotals: ok(muniRes)||{},
-      townshipTotals: ok(twpRes)||{},
-      tileTotals: ok(tileRes)||{},
-      controlledTotals: ok(ctrlRes)||{},
-      lots: ok(lotsRes)||[],
+      dfoTotals: okTotals(dfoRes),
+      pswTotals: okTotals(pswRes),
+      conservationTotals: okTotals(caRes),
+      municipalTotals: okTotals(muniRes),
+      townshipTotals: okTotals(twpRes),
+      tileTotals: okTotals(tileRes),
+      controlledTotals: okTotals(ctrlRes),
+      lots: ok(lotsRes)?.lots||[],
     });
     progressDone('✓ QUICK REPORT READY');
   }catch(err){
@@ -5249,8 +5260,9 @@ function showQuickReportPanel(data){
       <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">METHODOLOGY</div>
       <div style="font-size:11px;color:var(--muted);line-height:1.5">${escHtml(METHODOLOGY)}</div>
     </div>
-    <div style="padding:10px 18px;border-top:1px solid var(--border);flex-shrink:0">
+    <div style="padding:10px 18px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px">
       <button id="qrCopyBtn" style="padding:7px 16px;background:var(--panel2);border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer">⧉ COPY REPORT TEXT</button>
+      <button id="qrExportPropBtn" style="padding:7px 16px;background:var(--panel2);border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer">⊞ EXPORT BY PROPERTY (XLS)</button>
     </div>
   `;
   document.body.appendChild(panel);
@@ -5258,6 +5270,253 @@ function showQuickReportPanel(data){
   document.getElementById('qrCopyBtn').onclick=()=>{
     navigator.clipboard.writeText(reportText).then(()=>showToast('✓ REPORT COPIED')).catch(()=>showToast('⚠ COPY FAILED'));
   };
+  document.getElementById('qrExportPropBtn').onclick=exportPropertyBreakdownXLS;
+}
+
+// ═══════════════════════════════════════════════════
+// EXPORT BY PROPERTY — the same Quick Report layer data (window._qrLayerData, plus the soil HSG
+// system's own window._hsgFeats/_hsgField), broken down per individual parcel instead of per
+// whole boundary. Every layer's features were already fetched once for the Quick Report; this
+// just re-samples them with a finer grid scoped to each parcel's own rings, so there's no second
+// network round-trip per layer just to go from "boundary total" to "per-property breakdown".
+// ═══════════════════════════════════════════════════
+
+// Grid-sample a parcel's own outer ring against a polygon layerData object
+// ({feats,classifyFeature}, as returned by queryAreaClassBreakdown/queryLotsOverlap). Returns
+// {class: ha, ...} scoped to just this parcel — the same pointInPoly/pipRing sampling technique
+// queryAreaClassBreakdown uses for the whole boundary, just scoped down to one parcel's bbox.
+function classifyParcelByArea(outerRing,layerData,G){
+  const totals={};
+  if(!layerData||!layerData.feats||!layerData.feats.length||!outerRing||outerRing.length<3) return totals;
+  const xs=outerRing.map(v=>v[0]),ys=outerRing.map(v=>v[1]);
+  const mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);
+  const parcelHa=Math.abs(geoAreaHa(outerRing));
+  if(parcelHa<0.0001) return totals;
+  const pts=[];
+  for(let gi=0;gi<G;gi++) for(let gj=0;gj<G;gj++){
+    const lat=mny+(mxy-mny)*(gi+.5)/G;
+    const lng=mnx+(mxx-mnx)*(gj+.5)/G;
+    if(pipRing(lat,lng,outerRing)) pts.push([lat,lng]);
+  }
+  if(!pts.length) return totals;
+  const haPerPoint=parcelHa/pts.length;
+  pts.forEach(([lat,lng])=>{
+    const hit=layerData.feats.find(f=>(f.geometry?.rings||[]).some(ring=>ring.length>2&&pipRing(lat,lng,ring)));
+    if(!hit) return;
+    const cls=layerData.classifyFeature(hit);
+    totals[cls]=(totals[cls]||0)+haPerPoint;
+  });
+  return totals;
+}
+
+// Same idea for line layerData (DFO drain classification) — reuses queryLengthClassBreakdown's
+// own segment-length-in-UTM technique, restricted to segments with at least one endpoint inside
+// the parcel's outer ring.
+function classifyParcelByLength(outerRing,layerData){
+  const totals={};
+  if(!layerData||!layerData.feats||!layerData.feats.length||!outerRing||outerRing.length<3) return totals;
+  layerData.feats.forEach(f=>{
+    const paths=f.geometry?.paths||[];
+    if(!paths.length) return;
+    let lenM=0;
+    paths.forEach(path=>{
+      for(let i=1;i<path.length;i++){
+        const[lng1,lat1]=path[i-1],[lng2,lat2]=path[i];
+        if(!pipRing(lat1,lng1,outerRing)&&!pipRing(lat2,lng2,outerRing)) continue;
+        const[x1,y1]=wgs84ToUTM17N(lat1,lng1),[x2,y2]=wgs84ToUTM17N(lat2,lng2);
+        lenM+=Math.hypot(x2-x1,y2-y1);
+      }
+    });
+    if(lenM<=0) return;
+    const cls=layerData.classifyFeature(f);
+    totals[cls]=(totals[cls]||0)+lenM/1000;
+  });
+  return totals;
+}
+
+// Formats a totals-style object ({class: ha-or-km}) down to one table-cell string. opts.pctBase
+// expresses the dominant value as a % of that base (the parcel's own area in ha) instead of the
+// raw ha figure — used for the coverage-style columns (PSW/controlled) where most of a parcel is
+// expected to have no match at all, so a bare ha number would be hard to read at a glance.
+function dominantLabel(totals,opts={}){
+  // Blank/whitespace-only class keys (e.g. a Lot Fabric polygon with neither LOT_IDENT nor
+  // CONCESSION_IDENT populated) are dropped before ranking — otherwise an unlabeled polygon that
+  // happens to cover the most sampled points would win the "dominant" slot and render as a bare
+  // " (NN%)" with no class name, hiding a real label that may exist for a smaller share of the
+  // same parcel.
+  const entries=Object.entries(totals||{}).filter(([c])=>c&&c.trim()).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length) return opts.emptyLabel??'—';
+  if(opts.allClasses) return entries.map(([c,v])=>`${c} (${v.toFixed(2)}${opts.unit||''})`).join(', ');
+  const[cls,val]=entries[0];
+  const label=(opts.prefix||'')+cls;
+  const measure=opts.pctBase?`${(val/opts.pctBase*100).toFixed(0)}%`:`${val.toFixed(2)}${opts.unit||''}`;
+  return `${label} (${measure})`;
+}
+
+// Fresh parcel fetch scoped to the loaded boundary — deliberately independent of the global
+// parcelData array (which is only populated by the separate "Query Boundary" results-table flow
+// and may be stale, empty, or from a different boundary by the time this export is triggered).
+// Mirrors exportDXF's proven parcel-query shape, but keeps WGS84 rings instead of converting to
+// UTM verts, since every layer's classify pass above needs lat/lng to reuse pipRing/pointInPoly.
+async function fetchParcelsForPropertyExport(token){
+  const bounds=loadedBoundaryPoly.getBounds();
+  const bLatlngs=loadedBoundaryPoly.getLatLngs()[0];
+  const env=JSON.stringify({xmin:bounds.getWest(),ymin:bounds.getSouth(),xmax:bounds.getEast(),ymax:bounds.getNorth(),spatialReference:{wkid:4326}});
+  const bodyObj={
+    f:'json',geometry:env,geometryType:'esriGeometryEnvelope',inSR:'4326',spatialRel:'esriSpatialRelIntersects',
+    outFields:customParcelUrl?'*':getParcelRollField(),returnGeometry:'true',outSR:'4326',resultRecordCount:'2000',
+  };
+  if(token&&!customParcelUrl) bodyObj.token=token;
+  const resp=await fetch(getParcelUrl()+'/'+getParcelLayer()+'/query',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(bodyObj).toString(),signal:AbortSignal.timeout(30000)});
+  const data=await resp.json();
+  if(data.error) throw new Error(data.error.message);
+  const rollFld=getParcelRollField();
+  const seen=new Set();
+  return (data.features||[]).filter(f=>{
+    const roll=f.attributes?.[rollFld]||f.attributes?.ASSESSMENT_ROLL_NUMBER||'';
+    if(!roll||seen.has(roll)) return false;
+    const rings=f.geometry?.rings||[];
+    if(!rings.length) return false;
+    const anyInside=rings.some(ring=>ring.some(([lng,lat])=>pointInPoly(lat,lng,bLatlngs)));
+    if(!anyInside) return false;
+    seen.add(roll);
+    return true;
+  }).map(f=>{
+    const roll=f.attributes[rollFld]||f.attributes.ASSESSMENT_ROLL_NUMBER||'';
+    const rings=f.geometry.rings||[];
+    const outer=rings.reduce((a,b)=>b.length>a.length?b:a,rings[0]);
+    return {roll,outer};
+  });
+}
+
+async function exportPropertyBreakdownXLS(){
+  if(!loadedBoundaryPoly){ showToast('LOAD A BOUNDARY FIRST'); return; }
+  const qr=window._qrLayerData;
+  if(!qr){ showToast('GENERATE THE QUICK REPORT FIRST'); return; }
+  const token=getLioToken();
+  if(!token&&!customParcelUrl){ showToast('PASTE AGMAPS TOKEN FIRST (or set a custom parcel source)'); return; }
+
+  const btn=document.getElementById('qrExportPropBtn');
+  const prevLabel=btn?btn.textContent:'';
+  if(btn){ btn.textContent='⟳ QUERYING PARCELS…'; btn.disabled=true; }
+  try{
+    const parcels=await fetchParcelsForPropertyExport(token);
+    if(!parcels.length){ showToast('NO PARCELS FOUND IN BOUNDARY'); return; }
+
+    const hsgData=window._hsgFeats&&window._hsgFeats.length?
+      {feats:window._hsgFeats,classifyFeature:f=>window._hsgField?(String(f.attributes?.[window._hsgField]||'?').trim()||'?'):'?'}:null;
+
+    const G=10; // per-parcel grid — parcels are much smaller than the whole boundary, so this stays cheap
+    const rows=parcels.map((p,i)=>{
+      const areaHa=Math.abs(geoAreaHa(p.outer));
+      const hsgT=classifyParcelByArea(p.outer,hsgData,G);
+      const capT=classifyParcelByArea(p.outer,qr.cap,G);
+      const soilDrainT=classifyParcelByArea(p.outer,qr.soilDrain,G);
+      const kFactorT=classifyParcelByArea(p.outer,qr.kFactor,G);
+      const muniT=classifyParcelByArea(p.outer,qr.muni,G);
+      const twpT=classifyParcelByArea(p.outer,qr.twp,G);
+      const caT=classifyParcelByArea(p.outer,qr.ca,G);
+      const lotsT=classifyParcelByArea(p.outer,qr.lots,G);
+      const pswT=classifyParcelByArea(p.outer,qr.psw,G);
+      const tileT=classifyParcelByArea(p.outer,qr.tile,G);
+      const ctrlT=classifyParcelByArea(p.outer,qr.ctrl,G);
+      const dfoT=classifyParcelByLength(p.outer,qr.dfo);
+      const tileHa=Object.values(tileT)[0]||0;
+
+      // Every dominant-class column is shown as a % of this parcel's own area (not raw ha) so it
+      // reads at a glance next to the Area (ha) column, and so a parcel split across two classes
+      // (e.g. straddling a municipal boundary) shows the split instead of an opaque bare number.
+      return {
+        num:i+1, roll:p.roll, areaHa,
+        municipality:dominantLabel(muniT,{pctBase:areaHa,emptyLabel:'—'}),
+        township:dominantLabel(twpT,{pctBase:areaHa,emptyLabel:'—'}),
+        conservation:dominantLabel(caT,{pctBase:areaHa,emptyLabel:'None'}),
+        lotConcession:dominantLabel(lotsT,{pctBase:areaHa,emptyLabel:'—'}),
+        hsg:dominantLabel(hsgT,{prefix:'HSG ',pctBase:areaHa,emptyLabel:'—'}),
+        capability:dominantLabel(capT,{prefix:'Class ',pctBase:areaHa,emptyLabel:'—'}),
+        drainageClass:dominantLabel(soilDrainT,{pctBase:areaHa,emptyLabel:'—'}),
+        erodibility:dominantLabel(kFactorT,{pctBase:areaHa,emptyLabel:'—'}),
+        psw:dominantLabel(pswT,{pctBase:areaHa,emptyLabel:'None'}),
+        tile:tileHa>0?(tileHa/areaHa*100).toFixed(0)+'%':'None',
+        controlled:dominantLabel(ctrlT,{pctBase:areaHa,emptyLabel:'None'}),
+        dfo:dominantLabel(dfoT,{allClasses:true,unit:' km',emptyLabel:'None'}),
+      };
+    });
+
+    downloadPropertyBreakdownXLS(rows);
+    showToast('✓ EXPORTED '+rows.length+' PROPERTIES');
+  }catch(err){
+    showToast('⚠ EXPORT FAILED: '+err.message);
+    console.error('Property breakdown export error:',err);
+  }finally{
+    if(btn){ btn.textContent=prevLabel; btn.disabled=false; }
+  }
+}
+
+function downloadPropertyBreakdownXLS(rows){
+  const today=new Date().toLocaleDateString('en-CA');
+  const headers=['#','Roll / ARN','Short Form','Area (ha)','Municipality','Township','Conservation Auth.',
+    'Lot / Concession','HSG','Soil Capability','Soil Drainage','Erodibility','PSW / Wetland','Tile Drainage',
+    'Controlled Drainage','DFO Drain Class'];
+  function shortForm(roll){ if(!roll||roll.length<15) return '—'; return roll.slice(7,10)+'-'+roll.slice(10,15); }
+
+  const css=`
+    body{font-family:Calibri,Arial,sans-serif;font-size:10pt;}
+    table{border-collapse:collapse;width:100%;}
+    .title td{background:#0D2137;color:#38bdf8;font-size:14pt;font-weight:bold;padding:10px 14px;letter-spacing:1px;}
+    .subtitle td{background:#0D2137;color:#7AAFCC;font-size:9pt;padding:2px 14px 8px;}
+    th{background:#1A3A5C;color:#FFFFFF;font-weight:bold;font-size:9.5pt;padding:7px 8px;text-align:center;
+       border-top:2.5px solid #00e5ff;border-bottom:2.5px solid #00e5ff;border-left:1px solid #263040;border-right:1px solid #263040;}
+    .odd td{background:#FFFFFF;color:#1A2A3A;padding:5px 8px;text-align:center;border-bottom:1px solid #D0DCE8;border-left:1px solid #E0EAF2;border-right:1px solid #E0EAF2;}
+    .even td{background:#EEF4FB;color:#1A2A3A;padding:5px 8px;text-align:center;border-bottom:1px solid #D0DCE8;border-left:1px solid #E0EAF2;border-right:1px solid #E0EAF2;}
+    .col-num{color:#999;font-size:9pt;}
+    .col-arn{font-family:Calibri,sans-serif;font-size:10pt;color:#0D2137;font-weight:bold;}
+    .col-short{color:#0D5A8E;font-weight:bold;background:#E8F4FF !important;}
+    .col-area{font-weight:bold;color:#0D2137;}
+    .footer td{background:#0D2137;color:#4A7A9A;font-size:8pt;padding:5px 10px;border-top:2px solid #1A3A5C;}
+  `;
+  const colWidths=[30,180,110,80,150,140,150,120,70,110,100,140,140,110,130,140];
+  const colXml=colWidths.map(w=>`<col style="width:${w}pt"/>`).join('');
+
+  const dataRows=rows.map((r,i)=>{
+    const cls=i%2===0?'odd':'even';
+    return `<tr class="${cls}">
+      <td class="col-num">${escHtml(r.num)}</td>
+      <td class="col-arn" style="mso-number-format:'@'">${escHtml(r.roll)}</td>
+      <td class="col-short">${escHtml(shortForm(r.roll))}</td>
+      <td class="col-area">${r.areaHa.toFixed(2)}</td>
+      <td>${escHtml(r.municipality)}</td>
+      <td>${escHtml(r.township)}</td>
+      <td>${escHtml(r.conservation)}</td>
+      <td>${escHtml(r.lotConcession)}</td>
+      <td>${escHtml(r.hsg)}</td>
+      <td>${escHtml(r.capability)}</td>
+      <td>${escHtml(r.drainageClass)}</td>
+      <td>${escHtml(r.erodibility)}</td>
+      <td>${escHtml(r.psw)}</td>
+      <td>${escHtml(r.tile)}</td>
+      <td>${escHtml(r.controlled)}</td>
+      <td>${escHtml(r.dfo)}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head><meta charset="UTF-8"><style>${css}</style></head>
+<body><table>
+${colXml}
+<tr class="title"><td colspan="${headers.length}">MAX'S DRAINAGE MAP — PROPERTY BREAKDOWN</td></tr>
+<tr class="subtitle"><td colspan="${headers.length}">Exported: ${today} &nbsp;·&nbsp; ${rows.length} properties &nbsp;·&nbsp; Source: Ontario LIO / AgMaps — see Quick Report for full citations &amp; methodology</td></tr>
+<tr>${headers.map(h=>`<th>${escHtml(h)}</th>`).join('')}</tr>
+${dataRows}
+<tr class="footer"><td colspan="${headers.length}">Max's Drainage Map &nbsp;·&nbsp; ${today} &nbsp;·&nbsp; Areas are grid-sampled estimates, not survey-grade clipping — see Quick Report methodology</td></tr>
+</table></body></html>`;
+
+  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='Property_Breakdown_'+new Date().toISOString().slice(0,10)+'.xls';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
 }
 
 async function queryDrainsInBoundary(){
@@ -5592,7 +5851,11 @@ async function queryAreaClassBreakdown(url,where,classSpec,singleBucketLabel,tok
   const data=await resp.json();
   if(data.error) throw new Error(data.error.message);
   const feats=data.features||[];
-  if(!feats.length) return {};
+  // classifyFeature/feats are returned alongside totals so the same already-fetched features can
+  // be reused for a per-property breakdown later (see computePropertyBreakdown) without a second
+  // network round-trip per layer.
+  const classifyFeature=f=>classSpec?classify(f.attributes||{}):singleBucketLabel;
+  if(!feats.length) return {totals:{},feats,classifyFeature};
 
   const mnx=bounds.getWest(),mxx=bounds.getEast(),mny=bounds.getSouth(),mxy=bounds.getNorth();
   const boundaryHa=Math.abs(geoAreaHa(bLatlngs.map(ll=>[ll.lng,ll.lat])));
@@ -5603,7 +5866,7 @@ async function queryAreaClassBreakdown(url,where,classSpec,singleBucketLabel,tok
     const lng=mnx+(mxx-mnx)*(gj+.5)/G;
     if(pointInPoly(lat,lng,bLatlngs)) gridLatLngs.push([lat,lng]);
   }
-  if(!gridLatLngs.length) return {};
+  if(!gridLatLngs.length) return {totals:{},feats,classifyFeature};
   const haPerPoint=boundaryHa/gridLatLngs.length;
 
   const totals={};
@@ -5612,10 +5875,10 @@ async function queryAreaClassBreakdown(url,where,classSpec,singleBucketLabel,tok
     // not just the first, so multi-part features are handled correctly too.
     const hit=feats.find(f=>(f.geometry?.rings||[]).some(ring=>ring.length>2&&pipRing(lat,lng,ring)));
     if(!hit) return;
-    const cls=classSpec?classify(hit.attributes||{}):singleBucketLabel;
+    const cls=classifyFeature(hit);
     totals[cls]=(totals[cls]||0)+haPerPoint;
   });
-  return totals;
+  return {totals,feats,classifyFeature};
 }
 
 // Polyline layer, summing each matched feature's real length (UTM 17N) — only features that
@@ -5637,13 +5900,14 @@ async function queryLengthClassBreakdown(url,where,classField,token){
   const data=await resp.json();
   if(data.error) throw new Error(data.error.message);
   const feats=data.features||[];
+  const classifyFeature=f=>classField?(String(f.attributes?.[classField]||'NR').trim()||'NR'):'Drain';
   const totals={};
   feats.forEach(f=>{
     const paths=f.geometry?.paths||[];
     if(!paths.length) return;
     const anyInside=paths.some(path=>path.some(([lng,lat])=>pointInPoly(lat,lng,bLatlngs)));
     if(!anyInside) return;
-    const cls=classField?(String(f.attributes?.[classField]||'NR').trim()||'NR'):'Drain';
+    const cls=classifyFeature(f);
     let lenM=0;
     paths.forEach(path=>{
       for(let i=1;i<path.length;i++){
@@ -5654,7 +5918,9 @@ async function queryLengthClassBreakdown(url,where,classField,token){
     });
     totals[cls]=(totals[cls]||0)+lenM/1000;
   });
-  return totals;
+  // feats/classifyFeature returned too so a per-property pass can reuse this same fetch to test
+  // which drain lines cross each individual parcel, without a second network round-trip.
+  return {totals,feats,classifyFeature};
 }
 
 // Lot Fabric — no area/length breakdown needed, just a plain list of unique "Lot X, Concession Y"
@@ -5673,19 +5939,24 @@ async function queryLotsOverlap(){
   const data=await resp.json();
   if(data.error) throw new Error(data.error.message);
   const feats=data.features||[];
+  const classifyFeature=f=>{
+    const a=f.attributes||{};
+    const lot=(a.LOT_IDENT||'').toString().trim().replace(/^LOT\s*/i,'');
+    const conc=(a.CONCESSION_IDENT||'').toString().trim();
+    return [lot?`Lot ${lot}`:'',conc].filter(Boolean).join(', ');
+  };
   const seen=new Set();
   feats.forEach(f=>{
     const rings=f.geometry?.rings||[];
     if(!rings.length) return;
     const anyInside=rings.some(ring=>ring.some(([lng,lat])=>pointInPoly(lat,lng,bLatlngs)));
     if(!anyInside) return;
-    const a=f.attributes||{};
-    const lot=(a.LOT_IDENT||'').toString().trim().replace(/^LOT\s*/i,'');
-    const conc=(a.CONCESSION_IDENT||'').toString().trim();
-    if(!lot&&!conc) return;
-    seen.add([lot?`Lot ${lot}`:'',conc].filter(Boolean).join(', '));
+    const label=classifyFeature(f);
+    if(label) seen.add(label);
   });
-  return Array.from(seen).sort();
+  // feats/classifyFeature returned too so the per-property export can look up each parcel's own
+  // Lot/Concession directly, instead of only having the boundary-wide deduped list.
+  return {lots:Array.from(seen).sort(), feats, classifyFeature};
 }
 
 // Approximate geographic polygon area in hectares (shoelace on lng/lat)
