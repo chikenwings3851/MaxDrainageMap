@@ -2568,6 +2568,100 @@ map.on('zoomend',()=>{
   });
 });
 
+// ── Hover identify for raster overlay layers ──────────────────────────────────────────────────
+// Vector layers (soil, drains, storm-sewer featureLayers, etc.) already bind their own Leaflet
+// tooltip per feature. Raster layers (dynamicMapLayer/imageMapLayer — municipal boundaries, land
+// cover, DTM, most county storm servers rendered as server-side images) have no client-side
+// features to bind a tooltip to, so "what am I hovering over" needs a live server identify() call
+// instead. This works for every raster layer currently toggled on with zero per-layer wiring — it
+// just reads agLayerInstances for anything with a `.identify` method (only esri-leaflet's raster
+// layer classes implement that; FeatureLayer and the plain layerGroup from
+// buildMultiFeatureLayerGroup do not, so vector layers are naturally excluded — they already show
+// their own tooltip and never get a redundant one from this). The actual identify request is a
+// raw fetch() built by hand (same pattern already used for DXF export's queryOneDxfSource)
+// rather than esri-leaflet's own `.identify()` task helper — that helper doesn't support
+// ImageMapLayer's `.on(map)` at all (confirmed empirically: throws "on is not a function") and
+// showed unreliable request/response matching when reused rapidly on the same DynamicMapLayer
+// instance (confirmed empirically: responses arrived later than a fresh Promise.all had already
+// resolved, meaning stale results got dropped). A hand-built fetch avoids both problems and
+// matches how every other server call in this app already talks to these exact same services.
+const HOVER_IDENTIFY_SKIP=new Set(['cw_airphoto','dtm_lidar']); // raw imagery, and DTM (not needed)
+let hoverIdentifyEl=null, hoverIdentifyToken=0, hoverIdentifyTimer=null;
+function ensureHoverIdentifyEl(){
+  if(hoverIdentifyEl) return hoverIdentifyEl;
+  hoverIdentifyEl=document.createElement('div');
+  hoverIdentifyEl.id='hoverIdentify';
+  hoverIdentifyEl.style.cssText='position:fixed;z-index:9500;pointer-events:none;display:none;'+
+    'background:var(--panel);border:1px solid var(--accent);border-radius:6px;padding:6px 10px;'+
+    'font-family:var(--font-ui);font-size:12px;color:var(--text);line-height:1.5;'+
+    'box-shadow:0 4px 16px rgba(0,0,0,.5);max-width:320px;white-space:pre-line;';
+  document.body.appendChild(hoverIdentifyEl);
+  return hoverIdentifyEl;
+}
+function hideHoverIdentify(){ if(hoverIdentifyEl) hoverIdentifyEl.style.display='none'; }
+
+map.on('mousemove',e=>{
+  const el=ensureHoverIdentifyEl();
+  el.style.left=(e.originalEvent.clientX+16)+'px';
+  el.style.top=(e.originalEvent.clientY+16)+'px';
+  clearTimeout(hoverIdentifyTimer);
+  hoverIdentifyTimer=setTimeout(()=>runHoverIdentify(e.latlng),180);
+});
+map.on('mouseout',hideHoverIdentify);
+
+// One raw identify() fetch against a single raster layer's own service — handles both MapServer
+// (dynamicMapLayer) and ImageServer (imageMapLayer) URL shapes, since they need slightly
+// different params (MapServer needs layers/mapExtent/imageDisplay; ImageServer needs none of that).
+async function identifyOneLayer(id,inst,latlng){
+  const url=inst.options&&inst.options.url;
+  if(!url) return null;
+  const def=AG_LAYERS.find(l=>l.id===id);
+  const label=def?def.name:id;
+  const isImageServer=/ImageServer/i.test(url);
+  const params=new URLSearchParams({
+    geometry:JSON.stringify({x:latlng.lng,y:latlng.lat,spatialReference:{wkid:4326}}),
+    geometryType:'esriGeometryPoint', sr:'4326', returnGeometry:'false', f:'json',
+  });
+  if(!isImageServer){
+    const bounds=map.getBounds(), size=map.getSize();
+    params.set('tolerance','3');
+    params.set('layers', Array.isArray(inst.options.layers)&&inst.options.layers.length
+      ? 'visible:'+inst.options.layers.join(',') : 'visible');
+    params.set('mapExtent', `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`);
+    params.set('imageDisplay', `${size.x},${size.y},96`);
+  }
+  try{
+    const resp=await fetch(`${url}/identify?${params.toString()}`,{signal:AbortSignal.timeout(4000)});
+    const data=await resp.json();
+    if(data.error) return null;
+    // MapServer-style: one result per matched sublayer, each with the source's own
+    // displayFieldName/value — the same "what to show" choice the data provider already made.
+    if(Array.isArray(data.results)&&data.results.length){
+      return data.results.map(r=>`${r.layerName||label}: ${r.value||'—'}`).join('\n');
+    }
+    // ImageServer-style: a single pixel value (land-cover class code, crop code, etc.)
+    if(data.value!==undefined&&data.value!==null&&data.value!=='NoData'){
+      return `${label}: ${data.value}`;
+    }
+    return null;
+  }catch(e){ return null; }
+}
+
+async function runHoverIdentify(latlng){
+  const myToken=++hoverIdentifyToken;
+  const targets=Object.entries(agLayerInstances).filter(([id,inst])=>
+    !HOVER_IDENTIFY_SKIP.has(id)&&typeof inst.identify==='function'&&inst.options&&inst.options.url);
+  if(!targets.length){ hideHoverIdentify(); return; }
+
+  const lines=(await Promise.all(targets.map(([id,inst])=>identifyOneLayer(id,inst,latlng)))).filter(Boolean);
+
+  if(myToken!==hoverIdentifyToken) return; // a newer hover has already superseded this one
+  const el=ensureHoverIdentifyEl();
+  if(!lines.length){ el.style.display='none'; return; }
+  el.textContent=lines.join('\n');
+  el.style.display='block';
+}
+
 // ═══════════════════════════════════════════════════
 // DRAW POLYGON
 // ═══════════════════════════════════════════════════
