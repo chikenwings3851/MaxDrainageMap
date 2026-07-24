@@ -5022,50 +5022,85 @@ function showQuickReportPanel(data){
 
   const dateStr=new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long',day:'numeric'});
 
+  // Reuses this app's own already-verified AG_LAYERS source text (never re-derives/re-claims a
+  // source separately) — pulls just the first sentence of the full description (which in every
+  // entry states the org+dataset, the rest being caveats already shown elsewhere in the app) plus
+  // the confirmed last-updated date, so every stat in the report traces back to a real citation
+  // rather than a bare number.
+  const citeFor=(id,fallback)=>{
+    const def=AG_LAYERS.find(l=>l.id===id);
+    if(!def||!def.source) return fallback||'';
+    const firstSentence=def.source.split(/(?<=\.)\s/)[0];
+    return firstSentence+(def.lastUpdated?` (last updated ${def.lastUpdated})`:'');
+  };
+  const CITE={
+    municipal:citeFor('municipal'), townships:citeFor('townships'), conservation:citeFor('conservation'),
+    hsg:citeFor('hsg'), soil_cap:citeFor('soil_cap'), soil_drain:citeFor('soil_drain'),
+    soil_erodibility:citeFor('soil_erodibility'), olc_v1:citeFor('olc_v1'), psw:citeFor('psw'),
+    tile_drain:citeFor('tile_drain'), controlled:citeFor('controlled'), dfo_drain:citeFor('dfo_drain'),
+    lots:citeFor('lots'),
+    drains:'Ontario AIA/AgMaps drain search service — a separate service instance from the '+
+      'province-wide open-data "Constructed Drain" dataset (used by the DFO Drain Classification '+
+      'section above and the live map\'s own Municipal Drains layer); names are as recorded in that service.',
+  };
+  const METHODOLOGY='Areas are estimated by sampling a grid of points across the loaded boundary and checking '+
+    'which classified polygon (if any) contains each point — a close approximation for planning purposes, not '+
+    'an exact survey-grade polygon clipping. Municipal drain/DFO/lot search results are geometry matches within '+
+    'the boundary\'s bounding box, refined to the boundary\'s real shape. Cross-check anything used for a formal '+
+    'submission against the source service directly.';
+
   // ── Plain-text version (for the copy button) ──
-  const haLines=rows=>rows.length?rows.map(([cls,ha])=>`  ${cls}: ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (not available)'];
+  const haLines=(rows,citeId)=>[
+    ...(rows.length?rows.map(([cls,ha])=>`  ${cls}: ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (not available)']),
+    `  [${CITE[citeId]}]`,
+  ];
   const reportText=[
     `QUICK REPORT — ${drainName||'Untitled'}`,
     dateStr, '',
     `AREA: ${boundaryHa.toFixed(2)} ha`,
-    `MUNICIPALITY: ${municipalNames.join(', ')||'(not available)'}`,
-    `TOWNSHIP: ${townshipNames.join(', ')||'(not available)'}`,
-    `CONSERVATION AUTHORITY: ${conservationNames.join(', ')||'(none found)'}`,
+    `MUNICIPALITY: ${municipalNames.join(', ')||'(not available)'}  [${CITE.municipal}]`,
+    `TOWNSHIP: ${townshipNames.join(', ')||'(not available)'}  [${CITE.townships}]`,
+    `CONSERVATION AUTHORITY: ${conservationNames.join(', ')||'(none found)'}  [${CITE.conservation}]`,
     '',
-    'HYDROLOGIC SOIL GROUP:', ...haLines(hsgRows),
+    'HYDROLOGIC SOIL GROUP:', ...haLines(hsgRows,'hsg'),
     '',
-    'SOIL CAPABILITY (CLI):', ...haLines(capRows),
+    'SOIL CAPABILITY (CLI):', ...haLines(capRows,'soil_cap'),
     '',
-    'SOIL DRAINAGE CLASS:', ...haLines(soilDrainRows),
+    'SOIL DRAINAGE CLASS:', ...haLines(soilDrainRows,'soil_drain'),
     '',
-    'SOIL ERODIBILITY (K-FACTOR):', ...haLines(kFactorRows),
+    'SOIL ERODIBILITY (K-FACTOR):', ...haLines(kFactorRows,'soil_erodibility'),
     '',
-    'LAND USE:', ...haLines(luRows),
+    'LAND USE:', ...haLines(luRows,'olc_v1'),
     '',
-    'PSW / WETLANDS:', ...(pswRows.length?pswRows.map(([cls,ha])=>`  ${cls}: ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (none found)']),
+    'PSW / WETLANDS:', ...haLines(pswRows,'psw'),
     '',
-    'TILE DRAINAGE:', ...(tileRows.length?tileRows.map(([,ha])=>`  ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (none mapped)']),
+    'TILE DRAINAGE:', ...(tileRows.length?tileRows.map(([,ha])=>`  ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (none mapped)']), `  [${CITE.tile_drain}]`,
     '',
-    'CONTROLLED DRAINAGE:', ...(controlledRows.length?controlledRows.map(([cls,ha])=>`  ${cls}: ${ha.toFixed(2)} ha (${pct(ha)}%)`):['  (none found)']),
+    'CONTROLLED DRAINAGE:', ...haLines(controlledRows,'controlled'),
     '',
-    'DFO DRAIN CLASSIFICATION:', ...(dfoRows.length?dfoRows.map(([cls,km])=>`  Class ${cls}: ${km.toFixed(2)} km`):['  (not available)']),
+    'DFO DRAIN CLASSIFICATION:', ...(dfoRows.length?dfoRows.map(([cls,km])=>`  Class ${cls}: ${km.toFixed(2)} km`):['  (not available)']), `  [${CITE.dfo_drain}]`,
     '',
     `MUNICIPAL DRAINS FOUND (${drains.length}):`,
     ...(drains.length?drains.map(d=>`  ${d.name}${d.muni&&d.muni!=='—'?' — '+d.muni:''}`):['  (none found)']),
+    `  [${CITE.drains}]`,
     '',
-    `LOTS & CONCESSIONS: ${lots.length?lots.join('; '):'(not available)'}`,
+    `LOTS & CONCESSIONS: ${lots.length?lots.join('; '):'(not available)'}  [${CITE.lots}]`,
     '',
     `PHOTOS IN BOUNDARY: ${photosInside.length}`,
     ...(notes?['','NOTES:',notes]:[]),
+    '', 'METHODOLOGY:', '  '+METHODOLOGY,
   ].join('\n');
 
   const photoThumbs=photosInside.slice(0,12).map(p=>
     `<img src="${p.dataUrl}" style="width:56px;height:56px;object-fit:cover;border-radius:4px;border:1px solid var(--border2)">`
   ).join('');
 
-  // ── HTML section builder ──
-  const section=(title,html)=>`<div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">${title}</div>
-      <div style="font-size:12.5px;color:var(--text);line-height:1.7;margin-bottom:14px">${html}</div>`;
+  // ── HTML section builder — each section carries its own citation line underneath ──
+  const cite=citeId=>`<div style="font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px">${escHtml(CITE[citeId])}</div>`;
+  const section=(title,html,citeId)=>`<div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">${title}</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.7">${html}</div>
+      ${citeId?cite(citeId):''}
+      <div style="margin-bottom:14px"></div>`;
   const haRowsHtml=(rows,emptyMsg)=>rows.length?rows.map(([cls,ha])=>`${escHtml(cls)}: ${ha.toFixed(2)} ha (${pct(ha)}%)`).join('<br>'):`<span style="color:var(--muted)">${emptyMsg}</span>`;
 
   const panel=document.createElement('div');
@@ -5081,32 +5116,39 @@ function showQuickReportPanel(data){
     </div>
     <div style="padding:16px 18px;overflow-y:auto;flex:1">
       <div style="font-size:13px;color:var(--text);margin-bottom:6px"><b>Area:</b> ${boundaryHa.toFixed(2)} ha</div>
-      <div style="font-size:12.5px;color:var(--text);line-height:1.6;margin-bottom:14px">
+      <div style="font-size:12.5px;color:var(--text);line-height:1.6">
         <b>Municipality:</b> ${municipalNames.map(escHtml).join(', ')||'<span style="color:var(--muted)">not available</span>'}<br>
         <b>Township:</b> ${townshipNames.map(escHtml).join(', ')||'<span style="color:var(--muted)">not available</span>'}<br>
         <b>Conservation Authority:</b> ${conservationNames.map(escHtml).join(', ')||'<span style="color:var(--muted)">none found</span>'}
       </div>
+      ${cite('municipal')}${cite('townships')}${cite('conservation')}
+      <div style="margin-bottom:14px"></div>
 
-      ${section('HYDROLOGIC SOIL GROUP',haRowsHtml(hsgRows,'Not available'))}
-      ${section('SOIL CAPABILITY (CLI)',haRowsHtml(capRows,'Not available'))}
-      ${section('SOIL DRAINAGE CLASS',haRowsHtml(soilDrainRows,'Not available'))}
-      ${section('SOIL ERODIBILITY (K-FACTOR)',haRowsHtml(kFactorRows,'Not available'))}
-      ${section('LAND USE',haRowsHtml(luRows,'Not available'))}
-      ${section('PSW / WETLANDS',haRowsHtml(pswRows,'None found'))}
-      ${section('TILE DRAINAGE',tileRows.length?tileRows.map(([,ha])=>`${ha.toFixed(2)} ha (${pct(ha)}%)`).join('<br>'):'<span style="color:var(--muted)">None mapped</span>')}
-      ${section('CONTROLLED DRAINAGE',haRowsHtml(controlledRows,'None found'))}
-      ${section('DFO DRAIN CLASSIFICATION',dfoRows.length?dfoRows.map(([cls,km])=>`Class ${escHtml(cls)}: ${km.toFixed(2)} km`).join('<br>'):'<span style="color:var(--muted)">Not available</span>')}
+      ${section('HYDROLOGIC SOIL GROUP',haRowsHtml(hsgRows,'Not available'),'hsg')}
+      ${section('SOIL CAPABILITY (CLI)',haRowsHtml(capRows,'Not available'),'soil_cap')}
+      ${section('SOIL DRAINAGE CLASS',haRowsHtml(soilDrainRows,'Not available'),'soil_drain')}
+      ${section('SOIL ERODIBILITY (K-FACTOR)',haRowsHtml(kFactorRows,'Not available'),'soil_erodibility')}
+      ${section('LAND USE',haRowsHtml(luRows,'Not available'),'olc_v1')}
+      ${section('PSW / WETLANDS',haRowsHtml(pswRows,'None found'),'psw')}
+      ${section('TILE DRAINAGE',tileRows.length?tileRows.map(([,ha])=>`${ha.toFixed(2)} ha (${pct(ha)}%)`).join('<br>'):'<span style="color:var(--muted)">None mapped</span>','tile_drain')}
+      ${section('CONTROLLED DRAINAGE',haRowsHtml(controlledRows,'None found'),'controlled')}
+      ${section('DFO DRAIN CLASSIFICATION',dfoRows.length?dfoRows.map(([cls,km])=>`Class ${escHtml(cls)}: ${km.toFixed(2)} km`).join('<br>'):'<span style="color:var(--muted)">Not available</span>','dfo_drain')}
 
       <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">MUNICIPAL DRAINS (${drains.length})</div>
-      <div style="font-size:12.5px;color:var(--text);line-height:1.7;margin-bottom:14px">${drains.length?drains.map(d=>escHtml(d.name)+(d.muni&&d.muni!=='—'?' — '+escHtml(d.muni):'')).join('<br>'):'<span style="color:var(--muted)">None found</span>'}</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.7">${drains.length?drains.map(d=>escHtml(d.name)+(d.muni&&d.muni!=='—'?' — '+escHtml(d.muni):'')).join('<br>'):'<span style="color:var(--muted)">None found</span>'}</div>
+      ${cite('drains')}
+      <div style="margin-bottom:14px"></div>
 
-      ${section('LOTS & CONCESSIONS',lots.length?lots.map(escHtml).join('<br>'):'<span style="color:var(--muted)">Not available</span>')}
+      ${section('LOTS & CONCESSIONS',lots.length?lots.map(escHtml).join('<br>'):'<span style="color:var(--muted)">Not available</span>','lots')}
 
       <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">PHOTOS IN BOUNDARY (${photosInside.length})</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${photoThumbs||'<span style="color:var(--muted);font-size:12.5px">None</span>'}</div>
 
       ${notes?`<div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">NOTES</div>
-      <div style="font-size:12.5px;color:var(--text);line-height:1.5;white-space:pre-wrap">${escHtml(notes)}</div>`:''}
+      <div style="font-size:12.5px;color:var(--text);line-height:1.5;white-space:pre-wrap;margin-bottom:14px">${escHtml(notes)}</div>`:''}
+
+      <div style="font-size:12px;font-weight:700;color:var(--accent);letter-spacing:.5px;margin-bottom:6px">METHODOLOGY</div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.5">${escHtml(METHODOLOGY)}</div>
     </div>
     <div style="padding:10px 18px;border-top:1px solid var(--border);flex-shrink:0">
       <button id="qrCopyBtn" style="padding:7px 16px;background:var(--panel2);border:1px solid var(--accent);color:var(--accent);border-radius:4px;font-family:var(--font-ui);font-weight:700;font-size:12.5px;cursor:pointer">⧉ COPY REPORT TEXT</button>
@@ -5424,6 +5466,16 @@ async function querySoilAnalysis(){
 // classSpec is either a plain field name (bucketed by its literal trimmed value), an
 // {outField,classify(attrs)} pair for cases needing custom bucketing (e.g. K-factor's numeric
 // ranges), or null/undefined for an unclassified single-bucket layer (e.g. Tile Drainage Area).
+//
+// Samples a grid ONCE across the BOUNDARY's own bounding box, then classifies each sample point by
+// whichever matched feature (if any) contains it — not the other way around. An earlier version
+// sampled within each *feature's* own bounding box instead, which silently failed for anything
+// much larger than the boundary (Conservation Authorities, Municipalities, Townships routinely
+// span entire watersheds/regions): with sample points spaced kilometres apart across a huge
+// feature, the odds of any of them landing inside a small drain-project boundary are near zero, so
+// the feature would randomly vanish from the report depending on exactly where its own sample grid
+// happened to fall. Sampling the boundary's own (small, relevant) bbox instead is correct
+// regardless of whether matched features are much larger or much smaller than the boundary.
 async function queryAreaClassBreakdown(url,where,classSpec,singleBucketLabel,token){
   const outField=classSpec&&typeof classSpec==='object'?classSpec.outField:classSpec;
   const classify=classSpec&&typeof classSpec==='object'?classSpec.classify
@@ -5441,28 +5493,28 @@ async function queryAreaClassBreakdown(url,where,classSpec,singleBucketLabel,tok
   const data=await resp.json();
   if(data.error) throw new Error(data.error.message);
   const feats=data.features||[];
+  if(!feats.length) return {};
+
+  const mnx=bounds.getWest(),mxx=bounds.getEast(),mny=bounds.getSouth(),mxy=bounds.getNorth();
+  const boundaryHa=Math.abs(geoAreaHa(bLatlngs.map(ll=>[ll.lng,ll.lat])));
+  const G=24; // one grid for the whole boundary now (not per feature), so a finer grid is cheap
+  const gridLatLngs=[];
+  for(let gi=0;gi<G;gi++) for(let gj=0;gj<G;gj++){
+    const lat=mny+(mxy-mny)*(gi+.5)/G;
+    const lng=mnx+(mxx-mnx)*(gj+.5)/G;
+    if(pointInPoly(lat,lng,bLatlngs)) gridLatLngs.push([lat,lng]);
+  }
+  if(!gridLatLngs.length) return {};
+  const haPerPoint=boundaryHa/gridLatLngs.length;
+
   const totals={};
-  const G=12;
-  feats.forEach(f=>{
-    const rings=f.geometry?.rings||[];
-    if(!rings.length) return;
-    const cls=classSpec?classify(f.attributes||{}):singleBucketLabel;
-    const xs=rings[0].map(v=>v[0]),ys=rings[0].map(v=>v[1]);
-    const mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);
-    let total=0,inBoth=0;
-    for(let gi=0;gi<G;gi++) for(let gj=0;gj<G;gj++){
-      const lat=mny+(mxy-mny)*(gi+.5)/G;
-      const lng=mnx+(mxx-mnx)*(gj+.5)/G;
-      if(pipRing(lat,lng,rings[0])){
-        total++;
-        if(pointInPoly(lat,lng,bLatlngs)) inBoth++;
-      }
-    }
-    if(!total) return;
-    const polyAreaHa=Math.abs(geoAreaHa(rings[0]));
-    const clippedHa=polyAreaHa*(inBoth/total);
-    if(clippedHa<0.001) return;
-    totals[cls]=(totals[cls]||0)+clippedHa;
+  gridLatLngs.forEach(([lat,lng])=>{
+    // First matched feature whose polygon contains this point — checks every ring of a feature,
+    // not just the first, so multi-part features are handled correctly too.
+    const hit=feats.find(f=>(f.geometry?.rings||[]).some(ring=>ring.length>2&&pipRing(lat,lng,ring)));
+    if(!hit) return;
+    const cls=classSpec?classify(hit.attributes||{}):singleBucketLabel;
+    totals[cls]=(totals[cls]||0)+haPerPoint;
   });
   return totals;
 }
