@@ -611,6 +611,7 @@ document.addEventListener('DOMContentLoaded',function(){
         <div class="hmenu-lbl" id="analysisLbl" style="display:none">Boundary tools</div>
         <button class="hbtn" id="btnQueryBoundary" onclick="queryLoadedBoundary()" style="display:none;color:#c850ff">⚡ Query Boundary</button>
         <button class="hbtn" id="btnQueryDrains" onclick="queryDrainsInBoundary()" style="display:none;color:#ff6b35">💧 Query Drains</button>
+        <button class="hbtn" id="btnQueryCulverts" onclick="queryCulvertsInBoundary()" style="display:none;color:#c8a25a" title="Real culvert records (material/size/invert where available) from the municipal GIS servers that publish them — useful for PCSWMM DTM burn-in">🔧 Query Culverts</button>
         <button class="hbtn" id="btnSoilAnalysis" onclick="querySoilAnalysis()" style="display:none;color:#ff6b35">📊 Soil HSG</button>
         <button class="hbtn" id="btnSWMHYMO" onclick="querySWMHYMO()" style="display:none;color:#84cc16">📋 Land Use</button>
         <div class="hmenu-lbl" id="landCoverLbl" style="display:none">Land cover source</div>
@@ -4741,6 +4742,7 @@ async function loadBoundaryFile(file){
     showToast('✓ BOUNDARY LOADED — tools ready in 📊 ANALYSIS menu');
     document.getElementById('btnQueryBoundary').style.display='inline-block';
     document.getElementById('btnQueryDrains').style.display='inline-block';
+    document.getElementById('btnQueryCulverts').style.display='inline-block';
     document.getElementById('btnSoilAnalysis').style.display='inline-block';
     document.getElementById('btnSWMHYMO').style.display='inline-block';
     document.getElementById('landCoverSrc').style.display='inline-block';
@@ -5665,6 +5667,182 @@ async function runDrainSearchFromName(name){
   const inp=document.getElementById('drainSearchInput');
   if(inp){ inp.value=name; await runDrainSearch(); }
   else showToast('💧 SEARCHING: '+name);
+}
+
+// ── CULVERTS IN BOUNDARY ───────────────────────────────────────────────
+// Real culvert records (material/shape/dimensions/invert elevation where available), pulled from
+// the handful of municipal storm-infrastructure servers confirmed — by checking real field names
+// and real attribute values live, not by guessing from a layer's name — to actually tag culverts
+// as their own classification. This is deliberately NOT a province-wide dataset: the one
+// province-wide "culvert" service that exists (MNRF Road Crossing Water-Non-Bridge) turned out to
+// have zero coverage outside Crown-land forestry roads when checked against Max's own work areas,
+// so it's not included here. Built for pulling real burn-in locations/sizes into PCSWMM's terrain
+// conditioning tool, which a bare DTM can't provide on its own (LiDAR can't see under a road).
+const CULVERT_SOURCES=[
+  {label:'Barrie', url:'https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/StormInfrastructure/MapServer/1',
+   where:"TYPE='CULVERT'", f:{material:'MATERIAL',shape:'PIPESHP',width:'WIDTH',height:'HEIGHT',invertUp:'INV_UP_ELV',invertDn:'INV_DN_ELV',location:'LOCATION',id:'ASSETID'}},
+  {label:'Waterloo', url:'https://services.arcgis.com/ZpeBVw5o1kjit7LT/arcgis/rest/services/Stormwater_Gravity_Mains/FeatureServer/0',
+   where:"CULVERT_BRIDGE='Yes'", f:{material:'MATERIAL',shape:'CROSSSECTIONSHAPE',width:'WIDTH',height:'HEIGHT',invertUp:'UPSTREAMINVERT',invertDn:'DOWNSTREAMINVERT',location:'LOCATIONDESCRIPTION',id:'ASSET_ID'}},
+  {label:'Durham Region', url:'https://maps.durham.ca/arcgis/rest/services/Open_Data/Durham_OpenData/MapServer/133',
+   where:'SUBTYPE=4', f:{material:'MATERIAL',diameter:'NOMINALDIAMETER',id:'FACILITYID'}},
+  {label:'Burlington', url:'https://mapping.burlington.ca/arcgisweb/rest/services/COB/StormLayers/MapServer/0',
+   where:"LINE_TYPE='SMCULVERT'", f:{material:'MATERIAL',diameter:'SIZE_',id:'AM_ID'}},
+  {label:'Kitchener', url:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Pipes/FeatureServer/0',
+   where:"SUBCATEGORY='CULVERT'", f:{material:'MATERIAL',shape:'PIPE_SHAPE',width:'WIDTH',height:'HEIGHT',invertUp:'UP_INVERT',invertDn:'DN_INVERT',id:'STMPIPEID'}},
+];
+
+function formatCulvertSize(r){
+  if(r.width&&r.height) return r.width+'×'+r.height+'mm';
+  if(r.diameter) return 'Ø'+r.diameter+'mm';
+  if(r.width) return r.width+'mm';
+  return '—';
+}
+function formatInvert(r){
+  const up=r.invertUp!=null?Number(r.invertUp).toFixed(2):'—';
+  const dn=r.invertDn!=null?Number(r.invertDn).toFixed(2):'—';
+  return (up==='—'&&dn==='—')?'—':up+' / '+dn;
+}
+
+async function queryCulvertsInBoundary(){
+  if(!loadedBoundaryPoly){ showToast('LOAD A BOUNDARY FIRST'); return; }
+  showToast('🔧 QUERYING CULVERTS IN BOUNDARY…');
+
+  const bounds=loadedBoundaryPoly.getBounds();
+  const latlngs=loadedBoundaryPoly.getLatLngs()[0];
+  const envelope=JSON.stringify({xmin:bounds.getWest(),ymin:bounds.getSouth(),xmax:bounds.getEast(),ymax:bounds.getNorth(),spatialReference:{wkid:4326}});
+
+  const results=await Promise.allSettled(CULVERT_SOURCES.map(async src=>{
+    const body=new URLSearchParams({
+      f:'json',geometry:envelope,geometryType:'esriGeometryEnvelope',inSR:'4326',
+      spatialRel:'esriSpatialRelIntersects',where:src.where,outFields:'*',
+      returnGeometry:'true',outSR:'4326',resultRecordCount:'500',
+    });
+    const resp=await fetch(src.url+'/query',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:body.toString(),signal:AbortSignal.timeout(15000)});
+    const data=await resp.json();
+    if(data.error) throw new Error(src.label+': '+data.error.message);
+    return (data.features||[]).map(feat=>({src,feat}));
+  }));
+
+  const rows=[];
+  results.forEach((r,i)=>{
+    if(r.status==='rejected'){ console.warn('Culvert query failed:',CULVERT_SOURCES[i].label,r.reason?.message||r.reason); return; }
+    r.value.forEach(({src,feat})=>{
+      const paths=feat.geometry?.paths||[];
+      if(!paths.length) return;
+      const anyInside=paths.some(path=>path.some(([lng,lat])=>pointInPoly(lat,lng,latlngs)));
+      if(!anyInside) return;
+      const pts=paths.flat();
+      const lat=pts.reduce((s,[,y])=>s+y,0)/pts.length;
+      const lng=pts.reduce((s,[x])=>s+x,0)/pts.length;
+      const a=feat.attributes||{};
+      const g=field=>field?a[field]:null;
+      rows.push({
+        municipality:src.label,
+        id:g(src.f.id)||'—',
+        material:g(src.f.material)||'—',
+        shape:g(src.f.shape)||'—',
+        width:g(src.f.width),
+        height:g(src.f.height),
+        diameter:g(src.f.diameter),
+        invertUp:g(src.f.invertUp),
+        invertDn:g(src.f.invertDn),
+        location:g(src.f.location)||'—',
+        lat, lng,
+      });
+    });
+  });
+
+  if(!rows.length){ showToast('NO CULVERTS FOUND — only checked confirmed sources (Barrie/Waterloo/Durham/Burlington/Kitchener)'); return; }
+
+  window._lastCulverts=rows;
+  showCulvertResults(rows);
+  showToast(`✓ ${rows.length} CULVERT${rows.length!==1?'S':''} FOUND`);
+}
+
+function showCulvertResults(rows){
+  const existing=document.getElementById('culvertResultsPanel');
+  if(existing) existing.remove();
+
+  const panel=document.createElement('div');
+  panel.id='culvertResultsPanel';
+  panel.style.cssText=`position:fixed;bottom:20px;right:20px;width:380px;max-height:440px;background:var(--panel);border:1px solid var(--border);border-radius:8px;z-index:9000;display:flex;flex-direction:column;box-shadow:0 4px 24px rgba(0,0,0,.5)`;
+
+  const header=`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0">
+    <span style="font-family:var(--font-ui);font-weight:700;font-size:13.5px;color:#c8a25a;letter-spacing:.4px">🔧 CULVERTS IN BOUNDARY <span style="color:var(--muted)">(${rows.length})</span></span>
+    <span style="cursor:pointer;color:var(--muted);font-size:17px" onclick="document.getElementById('culvertResultsPanel').remove()">✕</span>
+  </div>`;
+
+  const body=rows.map(r=>`
+    <div style="padding:7px 14px;border-bottom:1px solid var(--border2)">
+      <div style="font-family:var(--font-ui);font-size:13px;color:var(--text);font-weight:500">${escHtml(r.municipality)} — ${escHtml(r.id)}</div>
+      <div style="font-family:var(--font-ui);font-size:11.5px;color:var(--muted);margin-top:2px">${escHtml(r.material)} · ${escHtml(formatCulvertSize(r))} · Invert (up/dn): ${escHtml(formatInvert(r))}</div>
+    </div>`).join('');
+
+  const footer=`<div style="padding:8px 14px;border-top:1px solid var(--border);flex-shrink:0">
+    <button onclick="downloadCulvertsXLS()" style="width:100%;padding:6px;background:var(--panel2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-size:12.5px;cursor:pointer;font-family:var(--font-ui);font-weight:600;letter-spacing:.3px">⬇ EXPORT CULVERTS XLS</button>
+  </div>`;
+
+  panel.innerHTML=header+`<div style="overflow-y:auto;flex:1">${body}</div>`+footer;
+  enhancePanel(panel);
+  document.body.appendChild(panel);
+}
+
+function downloadCulvertsXLS(){
+  const rows=window._lastCulverts||[];
+  if(!rows.length){ showToast('NO DATA TO EXPORT'); return; }
+  const today=new Date().toLocaleDateString('en-CA');
+  const headers=['#','Municipality','Asset ID','Material','Shape','Size','Invert Up (m)','Invert Down (m)','Location','Lat','Lng'];
+
+  const css=`
+    body{font-family:Calibri,Arial,sans-serif;font-size:10pt;}
+    table{border-collapse:collapse;width:100%;}
+    .title td{background:#0D2137;color:#38bdf8;font-size:14pt;font-weight:bold;padding:10px 14px;letter-spacing:1px;}
+    .subtitle td{background:#0D2137;color:#7AAFCC;font-size:9pt;padding:2px 14px 8px;}
+    th{background:#1A3A5C;color:#FFFFFF;font-weight:bold;font-size:9.5pt;padding:7px 8px;text-align:center;
+       border-top:2.5px solid #00e5ff;border-bottom:2.5px solid #00e5ff;border-left:1px solid #263040;border-right:1px solid #263040;}
+    .odd td{background:#FFFFFF;color:#1A2A3A;padding:5px 8px;text-align:center;border-bottom:1px solid #D0DCE8;border-left:1px solid #E0EAF2;border-right:1px solid #E0EAF2;}
+    .even td{background:#EEF4FB;color:#1A2A3A;padding:5px 8px;text-align:center;border-bottom:1px solid #D0DCE8;border-left:1px solid #E0EAF2;border-right:1px solid #E0EAF2;}
+    .col-num{color:#999;font-size:9pt;}
+    .footer td{background:#0D2137;color:#4A7A9A;font-size:8pt;padding:5px 10px;border-top:2px solid #1A3A5C;}
+  `;
+  const colWidths=[30,110,110,110,90,100,90,100,150,90,90];
+  const colXml=colWidths.map(w=>`<col style="width:${w}pt"/>`).join('');
+
+  const dataRows=rows.map((r,i)=>{
+    const cls=i%2===0?'odd':'even';
+    return `<tr class="${cls}">
+      <td class="col-num">${i+1}</td>
+      <td>${escHtml(r.municipality)}</td>
+      <td>${escHtml(r.id)}</td>
+      <td>${escHtml(r.material)}</td>
+      <td>${escHtml(r.shape)}</td>
+      <td>${escHtml(formatCulvertSize(r))}</td>
+      <td>${r.invertUp!=null?Number(r.invertUp).toFixed(2):'—'}</td>
+      <td>${r.invertDn!=null?Number(r.invertDn).toFixed(2):'—'}</td>
+      <td>${escHtml(r.location)}</td>
+      <td>${r.lat.toFixed(6)}</td>
+      <td>${r.lng.toFixed(6)}</td>
+    </tr>`;
+  }).join('');
+
+  const html=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head><meta charset="UTF-8"><style>${css}</style></head>
+<body><table>
+${colXml}
+<tr class="title"><td colspan="${headers.length}">MAX'S DRAINAGE MAP — CULVERTS</td></tr>
+<tr class="subtitle"><td colspan="${headers.length}">Exported: ${today} &nbsp;·&nbsp; ${rows.length} culverts &nbsp;·&nbsp; Sources: municipal open-data GIS servers, real records only — cross-check invert elevations against as-built drawings before design use</td></tr>
+<tr>${headers.map(h=>`<th>${escHtml(h)}</th>`).join('')}</tr>
+${dataRows}
+<tr class="footer"><td colspan="${headers.length}">Max's Drainage Map &nbsp;·&nbsp; ${today} &nbsp;·&nbsp; Not every municipality publishes culvert data — this covers only sources confirmed real and queryable</td></tr>
+</table></body></html>`;
+
+  const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='Culverts_'+new Date().toISOString().slice(0,10)+'.xls';
+  document.body.appendChild(a); a.click();
+  setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+  showToast('✓ EXPORTED '+rows.length+' CULVERTS');
 }
 
 // ── SOIL HSG ANALYSIS ──────────────────────────────────────────────────
