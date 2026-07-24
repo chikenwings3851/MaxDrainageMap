@@ -4905,6 +4905,33 @@ async function generateQuickReport(){
   }
 }
 
+// Drag a fixed-position panel by a handle element inside it. Converts the panel's initial
+// left/top (which may be a centering trick like left:50%+translateX(-50%)) into concrete pixel
+// values at the moment dragging starts, so it can then move anywhere — the panel's *visual*
+// position doesn't jump when the drag begins. Clamped so the header can't be dragged fully
+// off-screen and become unreachable.
+function makeDraggable(panel,handle){
+  if(!handle) return;
+  let dragging=false, startX=0, startY=0, startLeft=0, startTop=0;
+  handle.addEventListener('mousedown',e=>{
+    if(e.target.closest('button')) return; // let the close button behave normally
+    const rect=panel.getBoundingClientRect();
+    panel.style.left=rect.left+'px';
+    panel.style.top=rect.top+'px';
+    panel.style.transform='none';
+    dragging=true; startX=e.clientX; startY=e.clientY; startLeft=rect.left; startTop=rect.top;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!dragging) return;
+    const margin=40;
+    const maxLeft=window.innerWidth-margin, maxTop=window.innerHeight-margin;
+    panel.style.left=Math.min(Math.max(-panel.offsetWidth+margin,startLeft+(e.clientX-startX)),maxLeft)+'px';
+    panel.style.top=Math.min(Math.max(0,startTop+(e.clientY-startY)),maxTop)+'px';
+  });
+  window.addEventListener('mouseup',()=>{ dragging=false; });
+}
+
 function showQuickReportPanel(data){
   const {drainName,notes,boundaryHa,hsgTotals,drains,swmhymoTable,photosInside}=data;
   // The three individual analysis panels already popped up as a side effect of re-running them
@@ -4952,10 +4979,10 @@ function showQuickReportPanel(data){
   panel.id='quickReportPanel';
   panel.style.cssText='position:fixed;top:60px;left:50%;transform:translateX(-50%);width:640px;max-width:95vw;max-height:calc(100vh - 80px);background:var(--panel);border:1px solid var(--accent);border-radius:8px;z-index:9200;display:flex;flex-direction:column;box-shadow:0 4px 32px rgba(0,0,0,.7);overflow:hidden;font-family:var(--font-ui);';
   panel.innerHTML=`
-    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+    <div id="quickReportHeader" style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;cursor:move;user-select:none">
       <div>
         <div style="font-size:15px;font-weight:700;color:var(--accent)">⚡ QUICK REPORT${drainName?' — '+escHtml(drainName):''}</div>
-        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${dateStr}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${dateStr} · drag to move</div>
       </div>
       <button onclick="document.getElementById('quickReportPanel').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px">✕</button>
     </div>
@@ -4982,6 +5009,7 @@ function showQuickReportPanel(data){
     </div>
   `;
   document.body.appendChild(panel);
+  makeDraggable(panel,document.getElementById('quickReportHeader'));
   document.getElementById('qrCopyBtn').onclick=()=>{
     navigator.clipboard.writeText(reportText).then(()=>showToast('✓ REPORT COPIED')).catch(()=>showToast('⚠ COPY FAILED'));
   };
