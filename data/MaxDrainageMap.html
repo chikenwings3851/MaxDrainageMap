@@ -766,6 +766,10 @@ document.addEventListener('DOMContentLoaded',function(){
       <div class="results-header">
         <span class="results-title">// PARCEL RESULTS</span>
         <span class="results-count" id="resultsCount"></span>
+        <span style="display:flex;align-items:center;gap:6px;font-family:var(--font-ui);font-size:12.5px;color:var(--muted)" title="Show the short/simple roll number (drops the county prefix and trailing zeros) alongside the full one">
+          SHORT ROLL #
+          <label class="tog" style="margin:0"><input type="checkbox" id="tog-short-roll" onchange="toggleShortRollColumn(this.checked)"><span class="tog-track"></span></label>
+        </span>
         <div class="results-btns">
 <button class="rbtn" id="exportBtn" onclick="exportXLS()" style="display:none;border-color:rgba(57,255,20,.4);color:var(--green)">⬇ EXPORT XLS</button>
           <button class="rbtn" onclick="clearDrawings()">🗑 CLEAR SELECTION</button>
@@ -3657,6 +3661,15 @@ function farmBadgeHtml(f25,f26){
   return parts.join(' ');
 }
 
+// Whether the on-screen results table also shows the short/simple roll number column next to the
+// full ARN — off by default, same as this app's other display-only toggles (tog-dark, tog-cone,
+// etc.), toggled via the "SHORT ROLL #" switch in the results panel header.
+let showShortRoll=false;
+function toggleShortRollColumn(checked){
+  showShortRoll=checked;
+  if(parcelData.length && !(customParcelUrl && parcelData[0].rawAttrs)) renderResults(parcelData);
+}
+
 function renderResults(data){
   document.getElementById('resultsLoading').classList.remove('show');
   document.getElementById('resultsError').classList.remove('show');
@@ -3677,7 +3690,9 @@ function renderResults(data){
   wrap.style.display='block';
 
   let thead='<tr>';
-  thead+='<th>#</th><th>ROLL / ARN</th><th>ADDRESS</th><th>GEO. TOWNSHIP</th><th>MUNICIPALITY</th>';
+  thead+='<th>#</th><th>ROLL / ARN</th>';
+  if(showShortRoll) thead+='<th>SHORT #</th>';
+  thead+='<th>ADDRESS</th><th>GEO. TOWNSHIP</th><th>MUNICIPALITY</th>';
   thead+='<th>LOT</th><th>CONC.</th>';
   if(hasConservation) thead+='<th>CONSERVATION AUTH.</th>';
   thead+='<th>FARM CLASS</th>';
@@ -3688,6 +3703,7 @@ function renderResults(data){
     tbody+=`<tr onclick="selectParcelRow(${i})" style="cursor:pointer">`;
     tbody+=`<td style="color:var(--muted)">${i+1}</td>`;
     tbody+=`<td style="color:var(--accent);font-weight:700">${escHtml(r.roll)||'—'}</td>`;
+    if(showShortRoll) tbody+=`<td style="color:var(--accent);font-weight:700">${escHtml(shortForm(r.roll||''))}</td>`;
     tbody+=`<td data-addr="${i}" style="color:var(--muted);font-size:13px">${escHtml(r.address)||'⟳ geocoding…'}</td>`;
     tbody+=`<td data-township="${i}">${escHtml(r.township)||'—'}</td>`;
     tbody+=`<td data-muni="${i}" style="color:var(--muted)">${escHtml(r.municipality)||'—'}</td>`;
@@ -5458,7 +5474,6 @@ function downloadPropertyBreakdownXLS(rows){
   const headers=['#','Roll / ARN','Short Form','Area (ha)','Municipality','Township','Conservation Auth.',
     'Lot / Concession','HSG','Soil Capability','Soil Drainage','Erodibility','PSW / Wetland','Tile Drainage',
     'Controlled Drainage','DFO Drain Class'];
-  function shortForm(roll){ if(!roll||roll.length<15) return '—'; return roll.slice(7,10)+'-'+roll.slice(10,15); }
 
   const css=`
     body{font-family:Calibri,Arial,sans-serif;font-size:10pt;}
@@ -7397,6 +7412,14 @@ function shortCA(name){
     .trim();
 }
 
+// The "short"/"simple" roll number municipal drainage engineers actually reference locally — the
+// middle 8 digits of the full 21-digit ARN, without the leading municipality/county code or the
+// trailing zeros (the same 8 digits runShortRollImport/shortToFullARN expects when going the other
+// direction, pasting a short roll and expanding it back to a full ARN).
+function shortForm(roll){
+  if(!roll||roll.length<15) return '—';
+  return roll.slice(7,10)+'-'+roll.slice(10,15);
+}
 
 // ═══════════════════════════════════════════════════
 // FARM CLASS MAP LAYERS
@@ -7469,11 +7492,6 @@ function exportXLS(){
   const esc=v=>String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const today=new Date().toLocaleDateString('en-CA');
   const headers=['#','Roll / ARN','Short Form','Address','Geo. Township','Municipality','Lot','Concession','Conservation Auth.','Farm Class'];
-
-  function shortForm(roll){
-    if(!roll||roll.length<15) return '—';
-    return roll.slice(7,10)+'-'+roll.slice(10,15);
-  }
 
   const rows=parcelData.map((r,i)=>[
     i+1,
