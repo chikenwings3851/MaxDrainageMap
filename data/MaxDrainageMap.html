@@ -616,7 +616,7 @@ document.addEventListener('DOMContentLoaded',function(){
     </div>
 
     <button class="hbtn" onclick="clearAll()">✕ CLEAR</button>
-    <input type="file" id="boundaryInput" accept=".zip,.geojson,.json,.shp" style="display:none" onchange="loadBoundaryFile(this.files[0])">
+    <input type="file" id="boundaryInput" accept=".zip,.geojson,.json,.shp,.kml,.kmz,.dxf" style="display:none" onchange="loadBoundaryFile(this.files[0])">
   </div>
   <!-- TOKEN BAR -->
   <div style="display:flex;align-items:center;gap:7px;margin-left:10px;background:var(--panel2);border:1px solid var(--border2);border-radius:4px;padding:4px 9px;flex-shrink:0;">
@@ -4535,30 +4535,8 @@ async function loadBoundaryFile(file){
       const firstCoord=geojson?.features?.[0]?.geometry?.coordinates?.[0]?.[0]||
                        geojson?.coordinates?.[0]?.[0];
       if(firstCoord&&Array.isArray(firstCoord)&&Math.abs(firstCoord[0])>1000){
-        // Looks like projected coords — convert UTM 17N to WGS84
-        function utm17nToWGS84(easting, northing){
-          // Simple UTM Zone 17N inverse projection (accurate enough for Ontario)
-          const a=6378137, f=1/298.257223563;
-          const k0=0.9996, e2=2*f-f*f;
-          const e1p2=e2/(1-e2);
-          const N1=northing/k0;
-          const mu=N1/(a*(1-e2/4-3*e2*e2/64-5*e2*e2*e2/256));
-          const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
-          const J1=3*e1/2-27*e1*e1*e1/32;
-          const J2=21*e1*e1/16-55*e1*e1*e1*e1/32;
-          const J3=151*e1*e1*e1/96;
-          const J4=1097*e1*e1*e1*e1/512;
-          const fp=mu+J1*Math.sin(2*mu)+J2*Math.sin(4*mu)+J3*Math.sin(6*mu)+J4*Math.sin(8*mu);
-          const C1=e1p2*Math.cos(fp)*Math.cos(fp);
-          const T1=Math.tan(fp)*Math.tan(fp);
-          const R1=a*(1-e2)/Math.pow(1-e2*Math.sin(fp)*Math.sin(fp),1.5);
-          const N_=a/Math.sqrt(1-e2*Math.sin(fp)*Math.sin(fp));
-          const D=(easting-500000)/(N_*k0);
-          const lat=fp-(N_*Math.tan(fp)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*e1p2)*D*D*D*D/24
-            +(61+90*T1+298*C1+45*T1*T1-252*e1p2-3*C1*C1)*D*D*D*D*D*D/720);
-          const lon=-81*Math.PI/180+(D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*e1p2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(fp);
-          return[lon*180/Math.PI, lat*180/Math.PI];
-        }
+        // Looks like projected coords — convert UTM 17N to WGS84 (shared global utm17nToWGS84,
+        // also used by the DXF boundary import below)
         function reprojectCoords(coords){
           if(!Array.isArray(coords)) return coords;
           if(typeof coords[0]==='number') return utm17nToWGS84(coords[0],coords[1]);
@@ -4569,6 +4547,21 @@ async function loadBoundaryFile(file){
         geojson={type:'FeatureCollection',features:src.map(f=>({...f,geometry:reprojectGeom(f.geometry)}))};
         showToast('⟳ REPROJECTED FROM UTM 17N…');
       }
+
+    } else if(file.name.toLowerCase().endsWith('.kmz')){
+      // KMZ = a zipped KML (+ optional embedded images/resources) — JSZip is already loaded
+      // elsewhere in the app (photo/export handling), so no new dependency needed here.
+      const zip=await JSZip.loadAsync(await file.arrayBuffer());
+      const kmlEntry=Object.values(zip.files).find(f=>f.name.toLowerCase().endsWith('.kml'));
+      if(!kmlEntry){ showToast('⚠ NO .KML FOUND INSIDE THAT KMZ'); return; }
+      geojson=parseKMLPolygons(await kmlEntry.async('text'));
+
+    } else if(file.name.toLowerCase().endsWith('.kml')){
+      geojson=parseKMLPolygons(await file.text());
+
+    } else if(file.name.toLowerCase().endsWith('.dxf')){
+      geojson=parseDXFBoundary(await file.text());
+      if(!geojson){ showToast('⚠ NO CLOSED BOUNDARY FOUND IN DXF (need a closed polyline, or LINE segments forming a closed loop)'); return; }
 
     } else {
       geojson=JSON.parse(await file.text());
@@ -4634,8 +4627,99 @@ async function loadBoundaryFile(file){
   }
 }
 
+// KML/KMZ coordinates are always lon,lat[,alt] in WGS84 per the KML spec, so no reprojection is
+// needed here (unlike raw .shp/DXF, which can be in a local projected system). Finds every
+// <Polygon> anywhere in the document regardless of Folder/Document/Placemark/MultiGeometry
+// nesting — real-world KML (Google Earth exports especially) nests fairly deeply.
+function parseKMLPolygons(kmlText){
+  const doc=new DOMParser().parseFromString(kmlText,'text/xml');
+  if(doc.querySelector('parsererror')) return null;
+  const features=Array.from(doc.getElementsByTagName('Polygon')).map(polyEl=>{
+    const ring=polyEl.getElementsByTagName('outerBoundaryIs')[0]?.getElementsByTagName('LinearRing')[0];
+    const coordsText=ring?.getElementsByTagName('coordinates')[0]?.textContent;
+    if(!coordsText) return null;
+    const coords=coordsText.trim().split(/\s+/).map(pair=>{
+      const [lon,lat]=pair.split(',').map(Number);
+      return [lon,lat];
+    }).filter(([lon,lat])=>Number.isFinite(lon)&&Number.isFinite(lat));
+    return coords.length>=3?{type:'Feature',geometry:{type:'Polygon',coordinates:[coords]},properties:{}}:null;
+  }).filter(Boolean);
+  return {type:'FeatureCollection',features};
+}
 
+// Finds a boundary in a DXF: prefers a real closed LWPOLYLINE (the normal way a boundary is drawn
+// in modern CAD), picking the one with the most vertices if there are several (most likely "the"
+// boundary rather than a small closed detail elsewhere in the drawing). Falls back to chaining
+// LINE segments into a closed loop — covers both this app's own DXF export convention (boundary
+// as separate LINE entities) and hand-drawn CAD lines. Refuses rather than guessing if nothing
+// closed is found, same honesty-over-guessing rule as everywhere else in this app.
+function parseDXFBoundary(text){
+  const rawLines=text.split(/\r\n|\r|\n/);
+  const entities=[];
+  let cur=null;
+  for(let i=0;i+1<rawLines.length;i+=2){
+    const code=rawLines[i].trim(), value=rawLines[i+1];
+    if(code==='0'){
+      if(cur) entities.push(cur);
+      cur=(value==='LWPOLYLINE'||value==='LINE')?{type:value,verts:[],closed:false}:null;
+      continue;
+    }
+    if(!cur) continue;
+    if(cur.type==='LWPOLYLINE'){
+      if(code==='70') cur.closed=(parseInt(value,10)&1)===1;
+      else if(code==='10') cur.verts.push([parseFloat(value),NaN]);
+      else if(code==='20') cur.verts[cur.verts.length-1][1]=parseFloat(value);
+    } else if(cur.type==='LINE'){
+      if(code==='10') cur.x0=parseFloat(value);
+      else if(code==='20') cur.y0=parseFloat(value);
+      else if(code==='11') cur.x1=parseFloat(value);
+      else if(code==='21') cur.y1=parseFloat(value);
+    }
+  }
+  if(cur) entities.push(cur);
 
+  const closedPolylines=entities.filter(e=>e.type==='LWPOLYLINE'&&e.closed&&e.verts.length>=3);
+  let ring=null;
+  if(closedPolylines.length){
+    closedPolylines.sort((a,b)=>b.verts.length-a.verts.length);
+    ring=closedPolylines[0].verts;
+  } else {
+    ring=chainLinesIntoLoop(entities.filter(e=>e.type==='LINE'));
+  }
+  if(!ring||ring.length<3) return null;
+
+  // Same size heuristic as the raw .shp path: big numbers → assume UTM 17N (this app's own
+  // export/working CRS) and reproject; small numbers are already lat/lng.
+  const looksProjected=Math.abs(ring[0][0])>1000;
+  const coords=looksProjected?ring.map(([x,y])=>utm17nToWGS84(x,y)):ring;
+  return {type:'FeatureCollection',features:[{type:'Feature',geometry:{type:'Polygon',coordinates:[coords]},properties:{}}]};
+}
+
+// Walks LINE segments end-to-end (snapping endpoints within 1cm) trying to build one closed loop.
+// Returns null rather than a guess if the segments don't actually close — a partial/open chain is
+// not a boundary.
+function chainLinesIntoLoop(lines){
+  if(!lines.length) return null;
+  const EPS=0.01;
+  const key=(x,y)=>Math.round(x/EPS)+','+Math.round(y/EPS);
+  const used=new Array(lines.length).fill(false);
+  const chain=[[lines[0].x0,lines[0].y0],[lines[0].x1,lines[0].y1]];
+  used[0]=true;
+  let changed=true;
+  while(changed){
+    changed=false;
+    const [lx,ly]=chain[chain.length-1];
+    for(let i=0;i<lines.length;i++){
+      if(used[i]) continue;
+      const L=lines[i];
+      if(key(L.x0,L.y0)===key(lx,ly)){ chain.push([L.x1,L.y1]); used[i]=true; changed=true; break; }
+      if(key(L.x1,L.y1)===key(lx,ly)){ chain.push([L.x0,L.y0]); used[i]=true; changed=true; break; }
+    }
+  }
+  const [fx,fy]=chain[0], [ex,ey]=chain[chain.length-1];
+  if(key(fx,fy)!==key(ex,ey)) return null;
+  return chain.slice(0,-1);
+}
 
 // ═══════════════════════════════════════════════════
 // UNIFIED SMART SEARCH
@@ -6628,6 +6712,31 @@ function wgs84ToUTM17N(lat,lng){
   const x=k0*N*(A+(1-T+C)*A**3/6+(5-18*T+T**2+72*C-58*e2/(1-e2))*A**5/120)+500000;
   const y=k0*(M+N*Math.tan(latR)*(A**2/2+(5-T+9*C+4*C**2)*A**4/24+(61-58*T+T**2+600*C-330*e2/(1-e2))*A**6/720));
   return[x,y,zone];
+}
+// Inverse of wgs84ToUTM17N — used wherever an imported file's own coordinates turn out to be
+// projected (raw .shp with no accompanying .prj, or a DXF boundary) rather than lat/lng, both of
+// which fall back to this app's standard Ontario-drainage assumption of UTM Zone 17N NAD83.
+function utm17nToWGS84(easting,northing){
+  const a=6378137, f=1/298.257223563;
+  const k0=0.9996, e2=2*f-f*f;
+  const e1p2=e2/(1-e2);
+  const N1=northing/k0;
+  const mu=N1/(a*(1-e2/4-3*e2*e2/64-5*e2*e2*e2/256));
+  const e1=(1-Math.sqrt(1-e2))/(1+Math.sqrt(1-e2));
+  const J1=3*e1/2-27*e1*e1*e1/32;
+  const J2=21*e1*e1/16-55*e1*e1*e1*e1/32;
+  const J3=151*e1*e1*e1/96;
+  const J4=1097*e1*e1*e1*e1/512;
+  const fp=mu+J1*Math.sin(2*mu)+J2*Math.sin(4*mu)+J3*Math.sin(6*mu)+J4*Math.sin(8*mu);
+  const C1=e1p2*Math.cos(fp)*Math.cos(fp);
+  const T1=Math.tan(fp)*Math.tan(fp);
+  const R1=a*(1-e2)/Math.pow(1-e2*Math.sin(fp)*Math.sin(fp),1.5);
+  const N_=a/Math.sqrt(1-e2*Math.sin(fp)*Math.sin(fp));
+  const D=(easting-500000)/(N_*k0);
+  const lat=fp-(N_*Math.tan(fp)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*e1p2)*D*D*D*D/24
+    +(61+90*T1+298*C1+45*T1*T1-252*e1p2-3*C1*C1)*D*D*D*D*D*D/720);
+  const lon=-81*Math.PI/180+(D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*e1p2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(fp);
+  return[lon*180/Math.PI, lat*180/Math.PI];
 }
 // ── DXF colour fidelity ──────────────────────────────────────────────────────────────────────
 // R12/AC1009 DXF (see dxfHeader above) has no true-colour entities (that's group code 420,
