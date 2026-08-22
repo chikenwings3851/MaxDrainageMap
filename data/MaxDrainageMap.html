@@ -3696,7 +3696,7 @@ function renderResults(data){
   thead+='<th>ADDRESS</th><th>GEO. TOWNSHIP</th><th>MUNICIPALITY</th>';
   thead+='<th>LOT</th><th>CONC.</th>';
   if(hasConservation) thead+='<th>CONSERVATION AUTH.</th>';
-  thead+='<th>FARM CLASS</th>';
+  thead+='<th>FARM CLASS</th><th>STREET VIEW</th>';
   thead+='</tr>';
 
   let tbody='';
@@ -3712,6 +3712,7 @@ function renderResults(data){
     tbody+=`<td data-conc="${i}" style="color:var(--muted)">${escHtml(r.concession)||'⟳'}</td>`;
     if(hasConservation) tbody+=`<td style="color:var(--muted);font-size:13px">${escHtml(shortCA(r.conservation))}</td>`;
     tbody+=`<td data-farm="${i}">${(r.farm2025!==undefined||r.farm2026!==undefined)?farmBadgeHtml(r.farm2025,r.farm2026):'<span style="color:var(--muted);font-size:13px">⟳</span>'}</td>`;
+    tbody+=`<td>${streetViewLink(r.centLat,r.centLng)}</td>`;
     tbody+='</tr>';
   });
 
@@ -7597,6 +7598,16 @@ function shortCA(name){
 function shortForm(roll){
   if(!roll||roll.length<15) return '—';
   return roll.slice(7,10)+'-'+roll.slice(10,15);
+}
+
+// Google's documented keyless Street View deep link — no API key/billing needed, just opens
+// Street View (or the nearest available panorama) at a point. main.js already routes any link
+// click out to the system browser (setWindowOpenHandler/will-navigate both call
+// shell.openExternal), so a plain target="_blank" anchor is all this needs.
+function streetViewLink(lat,lng){
+  if(lat==null||lng==null) return '<span style="color:var(--muted)">—</span>';
+  const url=`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
+  return `<a href="${url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" title="Open Google Street View at this parcel" style="color:var(--accent);text-decoration:none;font-size:15px">👁</a>`;
 }
 
 // ═══════════════════════════════════════════════════
