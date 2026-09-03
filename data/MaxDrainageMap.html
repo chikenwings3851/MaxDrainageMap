@@ -1838,6 +1838,7 @@ const isMobile=window.matchMedia('(max-width:768px)').matches;
 const panelState={photos:!isMobile,settings:!isMobile};
 let drawnItems=new L.FeatureGroup().addTo(map);
 let parcelHighlightLayer=new L.FeatureGroup().addTo(map);
+let culvertHighlightLayer=new L.FeatureGroup().addTo(map);
 let drawControl=null, drawMode=false;
 let parcelData=[];
 
@@ -2801,6 +2802,8 @@ function highlightPhotosInPolygon(polygonLayer){
 function clearDrawings(){
   drawnItems.clearLayers();
   parcelHighlightLayer.clearLayers();
+  culvertHighlightLayer.clearLayers();
+  const cp=document.getElementById('culvertResultsPanel'); if(cp) cp.remove();
   closeResults();
   document.getElementById('stat-parcels').textContent='—';
   parcelData=[];
@@ -5753,11 +5756,51 @@ async function queryCulvertsInBoundary(){
     });
   });
 
+  culvertHighlightLayer.clearLayers();
   if(!rows.length){ showToast('NO CULVERTS FOUND — only checked confirmed sources (Barrie/Waterloo/Durham/Burlington/Kitchener)'); return; }
 
   window._lastCulverts=rows;
+  highlightCulverts(rows);
   showCulvertResults(rows);
-  showToast(`✓ ${rows.length} CULVERT${rows.length!==1?'S':''} FOUND`);
+  showToast(`✓ ${rows.length} CULVERT${rows.length!==1?'S':''} FOUND — marked on the map`);
+}
+
+// Draws each found culvert as its own marker (culverts are point-scale, not the polygon shapes
+// highlightParcels() draws) — same reused-FeatureGroup pattern as parcelHighlightLayer, cleared
+// and redrawn on every query so old results don't linger. Nothing was being plotted on the map at
+// all before this — the results panel alone isn't visible enough against the map itself.
+const culvertMarkerRefs=[];
+function highlightCulverts(rows){
+  culvertHighlightLayer.clearLayers();
+  culvertMarkerRefs.length=0;
+  rows.forEach((r,i)=>{
+    const marker=L.circleMarker([r.lat,r.lng],{
+      radius:8,color:'#fff',weight:1.5,fillColor:'#c8a25a',fillOpacity:.95,
+    });
+    marker.bindTooltip(
+      `🔧 ${escHtml(r.municipality)} — ${escHtml(r.id)}<br>${escHtml(r.material)} · ${escHtml(formatCulvertSize(r))}`,
+      {sticky:true,className:'ws-tooltip'}
+    );
+    marker.on('click',()=>selectCulvertRow(i));
+    culvertHighlightLayer.addLayer(marker);
+    culvertMarkerRefs.push(marker);
+  });
+  if(rows.length) map.fitBounds(culvertHighlightLayer.getBounds(),{padding:[80,80],maxZoom:18,animate:true});
+}
+
+function selectCulvertRow(idx){
+  document.querySelectorAll('#culvertResultsPanel .culvert-row').forEach((el,i)=>{
+    el.style.background=i===idx?'var(--hover)':'';
+    if(i===idx) el.scrollIntoView({block:'nearest',behavior:'smooth'});
+  });
+  const r=window._lastCulverts?.[idx];
+  if(r) map.setView([r.lat,r.lng],18,{animate:true});
+  const marker=culvertMarkerRefs[idx];
+  if(marker){
+    marker.setStyle({radius:12,fillColor:'#ffd600'});
+    marker.openTooltip();
+    setTimeout(()=>marker.setStyle({radius:8,fillColor:'#c8a25a'}),1500);
+  }
 }
 
 function showCulvertResults(rows){
@@ -5773,8 +5816,8 @@ function showCulvertResults(rows){
     <span style="cursor:pointer;color:var(--muted);font-size:17px" onclick="document.getElementById('culvertResultsPanel').remove()">✕</span>
   </div>`;
 
-  const body=rows.map(r=>`
-    <div style="padding:7px 14px;border-bottom:1px solid var(--border2)">
+  const body=rows.map((r,i)=>`
+    <div class="culvert-row" style="padding:7px 14px;border-bottom:1px solid var(--border2);cursor:pointer" onclick="selectCulvertRow(${i})">
       <div style="font-family:var(--font-ui);font-size:13px;color:var(--text);font-weight:500">${escHtml(r.municipality)} — ${escHtml(r.id)}</div>
       <div style="font-family:var(--font-ui);font-size:11.5px;color:var(--muted);margin-top:2px">${escHtml(r.material)} · ${escHtml(formatCulvertSize(r))} · Invert (up/dn): ${escHtml(formatInvert(r))}</div>
     </div>`).join('');
