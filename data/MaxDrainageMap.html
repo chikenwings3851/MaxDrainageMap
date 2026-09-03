@@ -1681,6 +1681,21 @@ const AG_LAYERS=[
     {color:'#c8c8c8',label:'Urban / Built-up'},
     {color:'#e8e8e8',label:'Barren / Exposed'},
   ]},
+  {id:'drainage_supt', name:'Drainage Superintendents', icon:'👤',desc:'The appointed Drainage Act superintendent (and contact info) for each municipality — the person or firm a landowner or municipality works with to manage drains constructed under the Drainage Act, 1990.', color:'#ffb454',layerIds:[],svcUrl:null,minZoom:7,opacity:.35,
+    source:'Ontario GeoHub (published by ontario.ca), verified 2026-09-02 against the live service — 414 real municipal records, confirmed a real entry for Township of Essa (Simcoe County). No token needed.',
+    lastUpdated:'2026-05-05',
+    sourceUrl:'https://services1.arcgis.com/pbmLC0kii9WWwA29/arcgis/rest/services/Drainage_Superintendents/FeatureServer/0',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/ontarioca11::drainage-superintendents'},
+  {id:'dam_inventory', name:'Dam Inventory', icon:'🌊',desc:'Medium and large dams across Ontario — relevant wherever a drainage project sits downstream of one, or near a structure that could affect flow. Does not include small dams, beaver dams, water crossings, or culverts.', color:'#4a90d2',layerIds:[0],svcUrl:null,minZoom:8,opacity:.85,
+    source:'Land Information Ontario (LIO_Open04, MNRF), verified 2026-09-02 against the live service. No token needed.',
+    lastUpdated:'2026-08-17',
+    sourceUrl:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open04/MapServer/0',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/mnrf::ontario-dam-inventory'},
+  {id:'monitoring_stations', name:'Water & Weather Monitoring Stations', icon:'📡',desc:'Stream and weather gauge locations used by the province\'s Surface Water Monitoring Centre to assess flood and drought conditions — a quick reference for the nearest gauge to a project. Station locations only, no live water-level/flow readings in this layer.', color:'#00bcd4',layerIds:[30],svcUrl:null,minZoom:8,opacity:.85,
+    source:'Land Information Ontario (LIO_Open08), verified 2026-09-02 against the live service. No token needed.',
+    lastUpdated:'2026-02-23',
+    sourceUrl:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open08/MapServer/30',
+    infoUrl:'https://geohub.lio.gov.on.ca/datasets/lio::ontario-water-and-weather-monitoring-stations'},
   {id:'essex_drains', group:'muni', name:'Drains (Essex County)', icon:'💧',desc:'Legal/municipal drains under the Drainage Act, mapped directly by the County of Essex — same idea as the province-wide Municipal Drains layer above, but this is the county\'s own, more locally-maintained dataset for its area.', color:'#00bfff',layerIds:[],svcUrl:'essex_drains',minZoom:10,opacity:.85,
     source:'County of Essex public GIS server (coe_water service, "Drainage" sublayer, has a DRAIN_NAME field), verified 2026-07-19. No token needed. This sublayer has no date field at all (checked its full field list), so there\'s no last-updated signal to show, live or otherwise. Essex doesn\'t run a separate open-data hub, so there\'s no plain-English page for this specific dataset either — just the raw service link below.',
     sourceUrl:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/coe_water/MapServer/4'},
@@ -2279,6 +2294,60 @@ function toggleAgLayer(id,enabled){
           const name=a.EVALUATED_WETLAND_NAME||'Unnamed wetland';
           const sig=a.WETLAND_SIGNIFICANCE==='Evaluated-Provincial'?'Provincially Significant':'Other Evaluated';
           layer.bindTooltip(`${name} — ${a.WETLAND_TYPE||'Wetland'} (${sig})`,{sticky:true,className:'ws-tooltip'});
+        },
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='drainage_supt'){
+      // Polygon-per-municipality contact lookup, not a spatial-analysis layer like everything
+      // else here — outline only (no fill) so it doesn't obscure whatever else is on screen,
+      // tooltip carries the actual superintendent name/firm/phone.
+      const fl=L.esri.featureLayer({
+        url:'https://services1.arcgis.com/pbmLC0kii9WWwA29/arcgis/rest/services/Drainage_Superintendents/FeatureServer/0',
+        simplifyFactor:0.4, precision:5,
+        style:()=>({color:'#ffb454',weight:1,opacity:0.6,fill:false}),
+        onEachFeature:(f,layer)=>{
+          const a=f.properties||{};
+          const name=a.Drainage_Superintendent||'Not on record';
+          const firm=a.Firm_Contact?' — '+a.Firm_Contact:'';
+          const phone=a.TwpPhNum?' · '+a.TwpPhNum:'';
+          layer.bindTooltip(`${a.NAME||'Unknown municipality'}<br>Superintendent: ${name}${firm}${phone}`,{sticky:true,className:'ws-tooltip'});
+        },
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='dam_inventory'){
+      const fl=L.esri.featureLayer({
+        url:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open04/MapServer/0',
+        simplifyFactor:0, precision:6,
+        pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:5,color:'#fff',weight:1,fillColor:'#4a90d2',fillOpacity:0.9}),
+        onEachFeature:(f,layer)=>{
+          const a=f.properties||{};
+          layer.bindTooltip(`🌊 ${a.DAM_NAME||'Unnamed dam'}${a.DAM_OWNERSHIP?' — '+a.DAM_OWNERSHIP:''}`,{sticky:true,className:'ws-tooltip'});
+        },
+      });
+      fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
+      fl.on('error',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';});
+      fl.addTo(map);
+      agLayerInstances[id]=fl;
+      return;
+    }
+    if(id==='monitoring_stations'){
+      const fl=L.esri.featureLayer({
+        url:'https://ws.lioservices.lrc.gov.on.ca/arcgis2/rest/services/LIO_OPEN_DATA/LIO_Open08/MapServer/30',
+        simplifyFactor:0, precision:6,
+        pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:5,color:'#fff',weight:1,fillColor:'#00bcd4',fillOpacity:0.9}),
+        onEachFeature:(f,layer)=>{
+          const a=f.properties||{};
+          layer.bindTooltip(`📡 ${a.STATION_NAME||'Unnamed station'}${a.NETWORK_NAME?' — '+a.NETWORK_NAME:''}`,{sticky:true,className:'ws-tooltip'});
         },
       });
       fl.on('load',()=>{statusEl.className='ag-layer-status on';statusEl.textContent='ON';});
