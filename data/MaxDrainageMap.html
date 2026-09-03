@@ -206,6 +206,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 @keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
 .ag-layer-controls{margin-top:7px;display:none;flex-direction:column;gap:5px;}
 .ag-layer-item.expanded .ag-layer-controls{display:flex;}
+.ag-quick-actions{display:flex;gap:6px;}
+.ag-quick-actions button{flex:1;background:var(--panel);border:1px solid var(--border2);border-radius:3px;color:var(--text);font-family:var(--font-ui);font-size:11px;font-weight:600;padding:5px 4px;cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s;}
+.ag-quick-actions button:hover{border-color:var(--accent);color:var(--accent);}
 .ag-opacity-row{display:flex;align-items:center;gap:6px;}
 .ag-opacity-lbl{font-size:13px;color:var(--muted);font-weight:600;white-space:nowrap;}
 .ag-source{font-family:var(--font-ui);font-size:12px;line-height:1.5;color:var(--muted);letter-spacing:0;margin-top:3px;}
@@ -885,6 +888,12 @@ document.addEventListener('DOMContentLoaded',function(){
             <div class="cdot" style="background:#ffffff" data-c="#ffffff" onclick="setColor(this)"></div>
           </div>
         </div>
+      </div>
+
+      <!-- LAYER SEARCH — filters both the Ontario Ag Layers and County/Municipal lists below -->
+      <div class="sg">
+        <input type="text" id="agLayerSearch" placeholder="🔎 Filter layers by name…" oninput="filterAgLayers(this.value)"
+          style="width:100%;background:var(--panel2);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--font-ui);font-size:12.5px;padding:7px 9px;">
       </div>
 
       <!-- ONTARIO AG LAYERS -->
@@ -2011,6 +2020,10 @@ function renderAgLayerCard(l){
       <div id="ag-status-${l.id}" class="ag-layer-status off">${l.broken?'N/A':'OFF'}</div>
       <div id="ag-zoom-warn-${l.id}" class="zoom-warn">⚠ Zoom to ${l.minZoom}+ to see this layer</div>
       <div class="ag-layer-controls" id="ag-ctrl-${l.id}">
+        <div class="ag-quick-actions">
+          <button onclick="zoomToAgLayer('${l.id}')" title="Pan/zoom the map to where this layer's data actually is">🔍 Zoom to layer</button>
+          <button onclick="isolateAgLayer('${l.id}')" title="Turn this layer on and every other layer off">👁 Isolate</button>
+        </div>
         <div class="ag-opacity-row">
           <span class="ag-opacity-lbl">Opacity</span>
           <div class="slider-row" style="flex:1">
@@ -2041,6 +2054,78 @@ function buildAgLayerUI(){
 }
 
 function toggleAgExpand(id){document.getElementById('ag-item-'+id).classList.toggle('expanded');}
+
+// ArcGIS-style "Zoom to Layer" — fetches the service's own published extent (works against a
+// MapServer/FeatureServer/ImageServer root OR a specific sublayer URL, since both expose
+// fullExtent the same way) and fits the map to it. Doesn't require the layer to be turned on
+// first — this is about finding WHERE a layer's data lives, most useful for the county/municipal
+// layers scattered across Southern Ontario that Max would otherwise have to hunt for by panning.
+async function zoomToAgLayer(id){
+  const l=AG_LAYERS.find(x=>x.id===id);
+  if(!l||!l.sourceUrl){ showToast('⚠ NO SOURCE URL ON RECORD FOR THIS LAYER'); return; }
+  showToast('🔍 LOCATING '+l.name.toUpperCase()+'…');
+  try{
+    const sep=l.sourceUrl.includes('?')?'&':'?';
+    const resp=await fetch(l.sourceUrl+sep+'f=json',{signal:AbortSignal.timeout(10000)});
+    const data=await resp.json();
+    const ext=data.fullExtent||data.extent||data.initialExtent;
+    if(!ext||ext.xmin==null){ showToast('⚠ NO PUBLISHED EXTENT FOR THIS LAYER — try the raw data link instead'); return; }
+    const wkid=ext.spatialReference?.latestWkid||ext.spatialReference?.wkid;
+    // Municipal services often publish extent in their own local NAD83 UTM zone (e.g. Barrie's is
+    // EPSG:26917 = zone 17N) rather than Web Mercator or WGS84 — caught live when "Zoom to Layer"
+    // sent Barrie's map to the Mediterranean because raw UTM metres got fed through the Web
+    // Mercator inverse formula. EPSG:269xx follows a fixed 26900+zone pattern (already relied on
+    // elsewhere in this app, e.g. the airphoto export's own UTM-zone SR construction).
+    let sw,ne;
+    if(wkid===4326||wkid===4269){ // 4269 = NAD83 geographic, close enough to treat as lat/lng directly
+      sw=[ext.ymin,ext.xmin]; ne=[ext.ymax,ext.xmax];
+    }else if(wkid>=26901&&wkid<=26923){ // NAD83 UTM zone N (North America)
+      const zone=wkid-26900;
+      const swLL=utm17nToWGS84(ext.xmin,ext.ymin,zone), neLL=utm17nToWGS84(ext.xmax,ext.ymax,zone);
+      sw=[swLL[1],swLL[0]]; ne=[neLL[1],neLL[0]]; // utm17nToWGS84 returns [lon,lat] — flip to [lat,lng]
+    }else{ // assume Web Mercator (3857) — the common default for AGOL-hosted/web-facing services
+      sw=wmToWGS(ext.xmin,ext.ymin); ne=wmToWGS(ext.xmax,ext.ymax);
+    }
+    map.fitBounds([sw,ne],{padding:[40,40],animate:true});
+    showToast('✓ ZOOMED TO '+l.name.toUpperCase());
+  }catch(err){
+    showToast('⚠ COULD NOT GET EXTENT: '+err.message);
+  }
+}
+
+// ArcGIS/QGIS-style "Isolate" (a.k.a. "show only this layer") — turns every other currently-on Ag
+// Layer off and this one on. Only touches AG_LAYERS-managed layers; drawn shapes, photos, and the
+// loaded boundary are left alone.
+function isolateAgLayer(id){
+  AG_LAYERS.forEach(l=>{
+    if(l.id===id||l.broken||l.isLabelLayer) return;
+    if(agLayerState[l.id]?.enabled){
+      const tog=document.getElementById('ag-tog-'+l.id);
+      if(tog) tog.checked=false;
+      toggleAgLayer(l.id,false);
+    }
+  });
+  const myTog=document.getElementById('ag-tog-'+id);
+  if(myTog&&!myTog.checked){ myTog.checked=true; }
+  if(!agLayerState[id]?.enabled) toggleAgLayer(id,true);
+  const l=AG_LAYERS.find(x=>x.id===id);
+  showToast('👁 ISOLATED: '+(l?l.name.toUpperCase():id));
+}
+
+// ArcGIS Contents-pane-style filter — with 38 layers across two groups, finding "the one I want"
+// by scrolling got real once the county/municipal sweep landed. Matches against name + description
+// (not just name) so e.g. typing "culvert" surfaces storm layers that mention it in their desc
+// even though no layer is literally named that. Filters both groups from one box.
+function filterAgLayers(query){
+  const q=query.trim().toLowerCase();
+  document.querySelectorAll('.ag-layer-item').forEach(el=>{
+    const id=el.id.replace('ag-item-','');
+    const l=AG_LAYERS.find(x=>x.id===id);
+    if(!l) return;
+    const hay=(l.name+' '+l.desc).toLowerCase();
+    el.style.display=(!q||hay.includes(q))?'':'none';
+  });
+}
 
 // Some municipalities (e.g. Kitchener, Waterloo) publish storm sewer as several separate
 // hosted feature services instead of one multi-sublayer MapServer — this combines a list of
@@ -2764,6 +2849,7 @@ function pipXY(x,y,ring){
 }
 // Global coordinate helpers
 function toWM(lng,lat){return[lng*20037508.34/180,Math.log(Math.tan((90+lat)*Math.PI/360))/Math.PI*20037508.34];}
+function wmToWGS(x,y){return[Math.atan(Math.exp(y*Math.PI/20037508.34))*360/Math.PI-90, x*180/20037508.34];}
 
 
 function highlightPhotosInPolygon(polygonLayer){
@@ -7356,7 +7442,6 @@ function renderDrainResults(results, raw, statusEl, listEl){
   const toLatLngs=geo=>{
     const paths=(geo&&geo.paths)||[];
     if(!paths.length) return null;
-    const wmToWGS=(x,y)=>[Math.atan(Math.exp(y*Math.PI/20037508.34))*360/Math.PI-90, x*180/20037508.34];
     const sample=paths[0][0];
     const isWM=sample&&Math.abs(sample[0])>180;
     return paths.map(p=>p.map(([x,y])=>isWM?wmToWGS(x,y):[y,x]));
@@ -7894,7 +7979,11 @@ function wgs84ToUTM17N(lat,lng){
 // Inverse of wgs84ToUTM17N — used wherever an imported file's own coordinates turn out to be
 // projected (raw .shp with no accompanying .prj, or a DXF boundary) rather than lat/lng, both of
 // which fall back to this app's standard Ontario-drainage assumption of UTM Zone 17N NAD83.
-function utm17nToWGS84(easting,northing){
+// `zone` defaults to 17 so every existing call site (all of which assumed 17N) is unaffected —
+// zoomToAgLayer is the one caller that passes a different zone, since some municipal services
+// publish their layer extents in their own local NAD83 UTM zone (Barrie's is 17N; others in
+// Ontario may be 16N or 18N) rather than Web Mercator or WGS84.
+function utm17nToWGS84(easting,northing,zone=17){
   const a=6378137, f=1/298.257223563;
   const k0=0.9996, e2=2*f-f*f;
   const e1p2=e2/(1-e2);
@@ -7913,7 +8002,8 @@ function utm17nToWGS84(easting,northing){
   const D=(easting-500000)/(N_*k0);
   const lat=fp-(N_*Math.tan(fp)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*e1p2)*D*D*D*D/24
     +(61+90*T1+298*C1+45*T1*T1-252*e1p2-3*C1*C1)*D*D*D*D*D*D/720);
-  const lon=-81*Math.PI/180+(D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*e1p2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(fp);
+  const lon0=((zone-1)*6-180+3)*Math.PI/180;
+  const lon=lon0+(D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*e1p2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(fp);
   return[lon*180/Math.PI, lat*180/Math.PI];
 }
 // ── DXF colour fidelity ──────────────────────────────────────────────────────────────────────
