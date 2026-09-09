@@ -2873,6 +2873,11 @@ map.on(L.Draw.Event.CREATED,async(e)=>{
   if(!isBoundaryQuery){
     layer.setStyle({color:'#ffd600',fillColor:'#ffd600',fillOpacity:.12,weight:2,dashArray:'6 4'});
     drawnItems.addLayer(layer);
+    // A freshly hand-drawn shape becomes the loaded boundary too, same as importing one from a
+    // file — otherwise Query Drains/Culverts, Soil HSG, Land Use, and Quick Report all silently
+    // do nothing after drawing, since every one of them requires loadedBoundaryPoly to be set.
+    loadedBoundaryPoly=layer;
+    revealBoundaryTools();
   }
   // Calculate area in hectares and show on polygon
   try{
@@ -2962,6 +2967,10 @@ function clearDrawings(){
   closeResults();
   document.getElementById('stat-parcels').textContent='—';
   parcelData=[];
+  // The boundary itself (if any) was just removed from the map above — drop the reference and
+  // re-hide the tools that depend on it, so the ANALYSIS menu doesn't keep offering Query Drains/
+  // Culverts/Soil HSG/Land Use/Quick Report against a boundary that's no longer there.
+  if(loadedBoundaryPoly){ loadedBoundaryPoly=null; hideBoundaryTools(); }
   // Reset photo highlights
   markers.forEach(({marker})=>{
     const el=marker.getElement();
@@ -4899,20 +4908,7 @@ async function loadBoundaryFile(file){
     highlightPhotosInPolygon(poly);
     loadedBoundaryPoly=poly;
     showToast('✓ BOUNDARY LOADED — tools ready in 📊 ANALYSIS menu');
-    document.getElementById('btnQueryBoundary').style.display='inline-block';
-    document.getElementById('btnQueryDrains').style.display='inline-block';
-    document.getElementById('btnQueryCulverts').style.display='inline-block';
-    document.getElementById('btnSoilAnalysis').style.display='inline-block';
-    document.getElementById('btnSWMHYMO').style.display='inline-block';
-    document.getElementById('landCoverSrc').style.display='inline-block';
-    document.getElementById('analysisLbl').style.display='block';
-    document.getElementById('landCoverLbl').style.display='block';
-    document.getElementById('analysisHint').style.display='none';
-    document.getElementById('quickReportSep').style.display='block';
-    document.getElementById('btnQuickReport').style.display='inline-block';
-    // Pop the ANALYSIS menu open so the newly-available tools are visible
-    const am=document.getElementById('menuAnalysis');
-    if(am && !am.classList.contains('open')) toggleHMenu('menuAnalysis');
+    revealBoundaryTools();
 
   }catch(err){
     console.error('Boundary load error:',err);
@@ -5021,6 +5017,47 @@ let searchPanelOpen=false;
 let searchMarker=null;
 let drainHighlight=null;
 let loadedBoundaryPoly=null;
+
+// Reveals the boundary-scoped ANALYSIS tools (Query Boundary/Drains/Culverts, Soil HSG, Land
+// Use, Quick Report) — shared by both ways a boundary can become "loaded": importing a file, and
+// hand-drawing a shape with the ✏ DRAW tool. Pulled out into one function specifically because
+// those two paths drifted apart over time (this exact list of buttons kept growing as features
+// were added, but only ever on the file-load side) — a hand-drawn boundary silently never
+// unlocked Query Drains/Culverts, Soil HSG, Land Use, or Quick Report at all, caught during a
+// pre-presentation test. One shared function means a future new tool only needs to be added here.
+function revealBoundaryTools(){
+  document.getElementById('btnQueryBoundary').style.display='inline-block';
+  document.getElementById('btnQueryDrains').style.display='inline-block';
+  document.getElementById('btnQueryCulverts').style.display='inline-block';
+  document.getElementById('btnSoilAnalysis').style.display='inline-block';
+  document.getElementById('btnSWMHYMO').style.display='inline-block';
+  document.getElementById('landCoverSrc').style.display='inline-block';
+  document.getElementById('analysisLbl').style.display='block';
+  document.getElementById('landCoverLbl').style.display='block';
+  document.getElementById('analysisHint').style.display='none';
+  document.getElementById('quickReportSep').style.display='block';
+  document.getElementById('btnQuickReport').style.display='inline-block';
+  // Pop the ANALYSIS menu open so the newly-available tools are visible
+  const am=document.getElementById('menuAnalysis');
+  if(am && !am.classList.contains('open')) toggleHMenu('menuAnalysis');
+}
+
+// Inverse of revealBoundaryTools — called on CLEAR so the ANALYSIS menu doesn't keep offering
+// Query Drains/Culverts/Soil HSG/Land Use/Quick Report once the boundary they'd run against has
+// actually been removed from the map.
+function hideBoundaryTools(){
+  document.getElementById('btnQueryBoundary').style.display='none';
+  document.getElementById('btnQueryDrains').style.display='none';
+  document.getElementById('btnQueryCulverts').style.display='none';
+  document.getElementById('btnSoilAnalysis').style.display='none';
+  document.getElementById('btnSWMHYMO').style.display='none';
+  document.getElementById('landCoverSrc').style.display='none';
+  document.getElementById('analysisLbl').style.display='none';
+  document.getElementById('landCoverLbl').style.display='none';
+  document.getElementById('analysisHint').style.display='block';
+  document.getElementById('quickReportSep').style.display='none';
+  document.getElementById('btnQuickReport').style.display='none';
+}
 
 async function queryLoadedBoundary(){
   if(!loadedBoundaryPoly){ showToast('LOAD A BOUNDARY FIRST'); return; }
