@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">
+<title>DXF Viewer</title>
+<style>
+  :root{
+    --bg:#0b0e13;--panel:#111620;--panel2:#161d2a;--border:#1e2a3a;--border2:#263040;
+    --text:#e2eef8;--muted:#7a9ab8;--accent:#00e5ff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;height:100vh;display:flex;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;}
+
+  #sidebar{width:280px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;overflow:hidden;}
+  #sidebar h1{font-size:15px;margin:0;padding:14px 16px;border-bottom:1px solid var(--border);color:var(--accent);letter-spacing:.4px;}
+
+  #dropZone{margin:14px;padding:18px 12px;border:2px dashed var(--border2);border-radius:8px;
+    text-align:center;font-size:13px;color:var(--muted);cursor:pointer;transition:border-color .15s,color .15s;}
+  #dropZone:hover,#dropZone.drag{border-color:var(--accent);color:var(--accent);}
+  #fileInput{display:none;}
+
+  #fileInfo{margin:0 14px 10px;font-size:12px;color:var(--muted);line-height:1.6;display:none;}
+  #fileInfo b{color:var(--text);}
+
+  #layerList{flex:1;overflow-y:auto;padding:0 8px 8px;}
+  .layer-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;font-size:12.5px;cursor:pointer;}
+  .layer-row:hover{background:var(--panel2);}
+  .layer-swatch{width:11px;height:11px;border-radius:2px;flex-shrink:0;border:1px solid rgba(255,255,255,.15);}
+  .layer-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .layer-count{color:var(--muted);font-size:11px;flex-shrink:0;}
+
+  #sidebarFooter{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.6;}
+
+  #main{flex:1;display:flex;flex-direction:column;min-width:0;}
+  #toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  #toolbar button{background:var(--panel2);border:1px solid var(--border2);color:var(--text);
+    padding:6px 12px;border-radius:5px;font-size:12.5px;cursor:pointer;font-weight:600;}
+  #toolbar button:hover{border-color:var(--accent);color:var(--accent);}
+  #toolbar .spacer{flex:1;}
+  #coordReadout{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--muted);white-space:nowrap;}
+
+  #canvasWrap{flex:1;position:relative;overflow:hidden;background:#05070a;}
+  canvas{position:absolute;inset:0;cursor:grab;}
+  canvas.panning{cursor:grabbing;}
+
+  #placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:14px;text-align:center;padding:20px;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>// DXF VIEWER</h1>
+  <div id="dropZone">Click or drop a .dxf file here</div>
+  <input type="file" id="fileInput" accept=".dxf">
+  <div id="fileInfo"></div>
+  <div id="layerList"></div>
+  <div id="sidebarFooter">
+    Colours are a nearest-match reconstruction of the AutoCAD Color Index — close, not pixel-exact to real CAD.
+  </div>
+</div>
+
+<div id="main">
+  <div id="toolbar">
+    <button id="btnFit">⊞ Fit to View</button>
+    <button id="btnAllOn">Show All Layers</button>
+    <button id="btnAllOff">Hide All Layers</button>
+    <div class="spacer"></div>
+    <span id="coordReadout"></span>
+  </div>
+  <div id="canvasWrap">
+    <canvas id="canvas"></canvas>
+    <div id="placeholder">Load a DXF file to preview it here.<br>Lines, circles, and text render the same way a CAD viewer would show them.</div>
+  </div>
+</div>
+
+<script>
+// ── DXF parsing ──────────────────────────────────────────────────────────────────
+// Reads the exact group-code-pair structure this project's own DXF writer produces
+// (R12/AC1009 — see MaxDrainageMap.html's dxfHeader/buildDXF): every group code sits
+// on its own line, immediately followed by its value on the next line. We don't need
+// to track SECTION boundaries — just watch for a "0" code whose value names an entity
+// type we understand (LINE/CIRCLE/TEXT), and collect codes into that entity until the
+// next "0" code closes it.
+function parseDXF(text){
+  const rawLines = text.split(/\r\n|\r|\n/);
+  const entities = [];
+  let cur = null;
+  for(let i=0;i+1<rawLines.length;i+=2){
+    const code = rawLines[i].trim();
+    const value = rawLines[i+1];
+    if(code==='0'){
+      if(cur) entities.push(cur);
+      cur = (value==='LINE'||value==='CIRCLE'||value==='TEXT') ? {type:value, layer:'0', color:256} : null;
+      continue;
+    }
+    if(!cur) continue;
+    switch(code){
+      case '8': cur.layer = value; break;
+      case '62': cur.color = parseInt(value,10); break;
+      case '10': cur.x0 = parseFloat(value); break;
+      case '20': cur.y0 = parseFloat(value); break;
+      case '11': cur.x1 = parseFloat(value); break;
+      case '21': cur.y1 = parseFloat(value); break;
+      case '40': cur.r = parseFloat(value); break; // CIRCLE radius or TEXT height
+      case '1': cur.text = value; break;
+    }
+  }
+  if(cur) entities.push(cur);
+  return entities;
+}
+
+// ── ACI (AutoCAD Color Index) → RGB, same reconstruction used by the app's own
+// hexToACI when it WRITES the DXF, run in reverse so the preview matches what that
+// export actually encoded. See MaxDrainageMap.html for the original + full rationale.
+function hslToRgb(h,s,l){
+  h=((h%360)+360)%360/360;
+  const hue2rgb=(p,q,t)=>{ if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+  let r,g,b;
+  if(s===0){ r=g=b=l; }
+  else{
+    const q=l<0.5?l*(1+s):l+s-l*s;
+    const p=2*l-q;
+    r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3);
+  }
+  return [Math.round(r*255),Math.round(g*255),Math.round(b*255)];
+}
+const ACI_BASE=[[255,0,0],[255,255,0],[0,255,0],[0,255,255],[0,0,255],[255,0,255],[255,255,255],[65,65,65],[128,128,128]];
+function aciToRGB(i){
+  if(i>=1&&i<=9) return ACI_BASE[i-1];
+  if(i>=250&&i<=255){ const g=Math.round(51+(i-250)*30.6); return [g,g,g]; }
+  if(i>=10&&i<=249){
+    const idx=i-10, wedge=Math.floor(idx/10), pos=idx%10;
+    const hue=wedge*15;
+    const l=pos<=4 ? 0.9-pos*0.08 : 0.5-(pos-4)*0.08;
+    const lc=Math.max(0.15,Math.min(0.9,l));
+    const sat=lc<0.35?Math.max(0.3,lc/0.35):1.0;
+    return hslToRgb(hue,sat,lc);
+  }
+  return [200,200,200]; // 256 = BYLAYER (never set by this project's writer) / anything unrecognized
+}
+function aciToCss(i){ const [r,g,b]=aciToRGB(i); return `rgb(${r},${g},${b})`; }
+
+// ── App state ──────────────────────────────────────────────────────────────────
+let entities = [];
+let layers = new Map();   // name -> {visible, count}
+let bounds = null;        // {minX,minY,maxX,maxY}
+let view = {scale:1, offX:0, offY:0};
+let dragging = false, dragStart = null, viewStart = null;
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvasWrap');
+const placeholder = document.getElementById('placeholder');
+
+function resizeCanvas(){
+  canvas.width = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+
+function computeBounds(){
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  for(const e of entities){
+    if(e.type==='LINE'){
+      minX=Math.min(minX,e.x0,e.x1); maxX=Math.max(maxX,e.x0,e.x1);
+      minY=Math.min(minY,e.y0,e.y1); maxY=Math.max(maxY,e.y0,e.y1);
+    } else if(e.type==='CIRCLE'){
+      minX=Math.min(minX,e.x0-e.r); maxX=Math.max(maxX,e.x0+e.r);
+      minY=Math.min(minY,e.y0-e.r); maxY=Math.max(maxY,e.y0+e.r);
+    } else if(e.type==='TEXT'){
+      minX=Math.min(minX,e.x0); maxX=Math.max(maxX,e.x0);
+      minY=Math.min(minY,e.y0); maxY=Math.max(maxY,e.y0);
+    }
+  }
+  if(!isFinite(minX)) return null;
+  return {minX,minY,maxX,maxY};
+}
+
+function fitToView(){
+  if(!bounds) return;
+  const w = bounds.maxX-bounds.minX || 1;
+  const h = bounds.maxY-bounds.minY || 1;
+  const pad = 40;
+  const sx = (canvas.width-pad*2)/w;
+  const sy = (canvas.height-pad*2)/h;
+  view.scale = Math.min(sx,sy);
+  view.offX = pad - bounds.minX*view.scale;
+  view.offY = pad + bounds.maxY*view.scale; // flip Y (DXF is Y-up, canvas is Y-down)
+  render();
+}
+
+function worldToScreen(x,y){
+  return [x*view.scale+view.offX, -y*view.scale+view.offY];
+}
+
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!entities.length) return;
+  for(const e of entities){
+    const layer = layers.get(e.layer);
+    if(layer && !layer.visible) continue;
+    ctx.strokeStyle = aciToCss(e.color);
+    ctx.fillStyle = aciToCss(e.color);
+    if(e.type==='LINE'){
+      const [sx,sy] = worldToScreen(e.x0,e.y0);
+      const [ex,ey] = worldToScreen(e.x1,e.y1);
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.lineWidth=1; ctx.stroke();
+    } else if(e.type==='CIRCLE'){
+      const [cx,cy] = worldToScreen(e.x0,e.y0);
+      const r = Math.max(e.r*view.scale, 2);
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.lineWidth=1.2; ctx.stroke();
+    } else if(e.type==='TEXT'){
+      const [tx,ty] = worldToScreen(e.x0,e.y0);
+      ctx.font = '11px system-ui,sans-serif';
+      ctx.fillText(e.text||'', tx, ty);
+    }
+  }
+}
+
+function buildLayerList(){
+  layers = new Map();
+  for(const e of entities){
+    if(!layers.has(e.layer)) layers.set(e.layer, {visible:true, count:0, color:e.color});
+    layers.get(e.layer).count++;
+  }
+  const listEl = document.getElementById('layerList');
+  listEl.innerHTML = '';
+  const sorted = Array.from(layers.entries()).sort((a,b)=>a[0].localeCompare(b[0]));
+  for(const [name, info] of sorted){
+    const row = document.createElement('div');
+    row.className = 'layer-row';
+    row.innerHTML = `<span class="layer-swatch" style="background:${aciToCss(info.color)}"></span>
+      <span class="layer-name" title="${name}">${name}</span>
+      <span class="layer-count">${info.count}</span>`;
+    row.addEventListener('click', ()=>{
+      info.visible = !info.visible;
+      row.style.opacity = info.visible ? '1' : '.4';
+      render();
+    });
+    listEl.appendChild(row);
+  }
+}
+
+function loadDXF(text, filename){
+  entities = parseDXF(text);
+  bounds = computeBounds();
+  buildLayerList();
+  placeholder.style.display = entities.length ? 'none' : 'flex';
+  if(!entities.length){
+    placeholder.textContent = 'No LINE/CIRCLE/TEXT entities found — check this is really a DXF export from the app.';
+    placeholder.style.display = 'flex';
+  }
+  const counts = {LINE:0, CIRCLE:0, TEXT:0};
+  for(const e of entities) counts[e.type]++;
+  const fileInfo = document.getElementById('fileInfo');
+  fileInfo.style.display = 'block';
+  fileInfo.innerHTML = `<b>${filename}</b><br>
+    ${counts.LINE} lines · ${counts.CIRCLE} circles · ${counts.TEXT} text<br>
+    ${layers.size} layer${layers.size===1?'':'s'}`;
+  fitToView();
+}
+
+document.getElementById('dropZone').addEventListener('click', ()=>document.getElementById('fileInput').click());
+document.getElementById('fileInput').addEventListener('change', (e)=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => loadDXF(reader.result, f.name);
+  reader.readAsText(f);
+});
+const dropZone = document.getElementById('dropZone');
+['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev, e=>{e.preventDefault();dropZone.classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev, e=>{e.preventDefault();dropZone.classList.remove('drag');}));
+dropZone.addEventListener('drop', e=>{
+  const f = e.dataTransfer.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = () => loadDXF(reader.result, f.name);
+  reader.readAsText(f);
+});
+
+document.getElementById('btnFit').addEventListener('click', fitToView);
+document.getElementById('btnAllOn').addEventListener('click', ()=>{
+  layers.forEach(l=>l.visible=true);
+  document.querySelectorAll('.layer-row').forEach(r=>r.style.opacity='1');
+  render();
+});
+document.getElementById('btnAllOff').addEventListener('click', ()=>{
+  layers.forEach(l=>l.visible=false);
+  document.querySelectorAll('.layer-row').forEach(r=>r.style.opacity='.4');
+  render();
+});
+
+canvas.addEventListener('mousedown', e=>{
+  dragging = true; canvas.classList.add('panning');
+  dragStart = [e.clientX, e.clientY]; viewStart = {offX:view.offX, offY:view.offY};
+});
+window.addEventListener('mouseup', ()=>{ dragging=false; canvas.classList.remove('panning'); });
+canvas.addEventListener('mousemove', e=>{
+  if(dragging){
+    view.offX = viewStart.offX + (e.clientX-dragStart[0]);
+    view.offY = viewStart.offY + (e.clientY-dragStart[1]);
+    render();
+  }
+  if(bounds){
+    const wx = (e.offsetX - view.offX)/view.scale;
+    const wy = -(e.offsetY - view.offY)/view.scale;
+    document.getElementById('coordReadout').textContent = `X ${wx.toFixed(2)}  Y ${wy.toFixed(2)}`;
+  }
+});
+canvas.addEventListener('wheel', e=>{
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+  const [wx,wy] = [ (e.offsetX-view.offX)/view.scale, (e.offsetY-view.offY)/view.scale ];
+  view.scale *= factor;
+  view.offX = e.offsetX - wx*view.scale;
+  view.offY = e.offsetY - wy*view.scale;
+  render();
+}, {passive:false});
+
+resizeCanvas();
+</script>
+</body>
+</html>
