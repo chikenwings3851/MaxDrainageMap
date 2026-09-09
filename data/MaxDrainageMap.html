@@ -8648,6 +8648,74 @@ function refreshTokenLayers(){
 
 
 // ═══════════════════════════════════════════════════
+// EXPORT SOURCE CITATIONS — real per-tile acquisition metadata
+// Ontario's LiDAR/imagery ImageServers publish their own mosaic catalog (one
+// polygon per flight tile, with real Project/StartYear/EndYear/Resolution/Accuracy
+// fields) — queried live for the exported area and written to a companion .txt so
+// an export is never unlabeled about which actual government flight it came from.
+// Verified live against real test data before relying on it: for the West Perth/
+// Fullarton test area this correctly returns "SWOOP2020" (2020, 0.16m/px) for
+// imagery and "OMAFRA Lidar (Lake Erie) 2016-18" + a newer overlapping
+// "DEDSFM Upper Thames-Grand River 2025" flight for LiDAR.
+// ═══════════════════════════════════════════════════
+const IMAGERY_CATALOG_URLS=[
+  'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/AerialImagery/GEO_Imagery_Data_Service_2018to2022/ImageServer',
+  'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/AerialImagery/GEO_Imagery_Data_Service_2013to2017/ImageServer',
+];
+
+// Queries one or more ImageServer mosaic catalogs for real acquisition-project
+// footprints intersecting a bbox (already in the given projected SR). where=Category=1
+// keeps only Primary source tiles (excludes the coarse Overview pyramid, which reports
+// misleadingly coarse "resolution" values). Returns a deduped, newest-first list of
+// attribute rows, or [] on any failure — a missing citation must never block the
+// actual export.
+async function queryCoverageProjects(svcUrls,xmin,ymin,xmax,ymax,sr,outFields){
+  const urls=Array.isArray(svcUrls)?svcUrls:[svcUrls];
+  const byProject=new Map();
+  await Promise.allSettled(urls.map(async svc=>{
+    const params=new URLSearchParams({
+      f:'json',geometry:`${xmin},${ymin},${xmax},${ymax}`,geometryType:'esriGeometryEnvelope',
+      inSR:String(sr),spatialRel:'esriSpatialRelIntersects',where:'Category=1',
+      outFields:outFields.join(','),returnGeometry:'false',
+    });
+    const resp=await fetch(svc+'/query?'+params.toString(),{signal:AbortSignal.timeout(15000)});
+    const data=await resp.json();
+    (data.features||[]).forEach(f=>{
+      const p=f.attributes?.Project;
+      if(p&&!byProject.has(p)) byProject.set(p,f.attributes);
+    });
+  }));
+  return [...byProject.values()].sort((a,b)=>(b.EndYear||0)-(a.EndYear||0));
+}
+
+function downloadTextFile(filename,text){
+  const blob=new Blob([text],{type:'text/plain'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=filename;
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// Builds the plain-text source citation dropped alongside an aerial/DTM export.
+function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote){
+  const lines=[title,'='.repeat(title.length),'','Exported file(s): '+fileNames.join(', '),'Exported: '+new Date().toString(),''];
+  if(rows.length){
+    lines.push('Real acquisition coverage found for this area (Ontario government mosaic');
+    lines.push('catalog, Primary tiles only — queried live at export time):','');
+    rows.forEach(r=>lines.push('  • '+rowFmt(r)));
+    lines.push('');
+    if(rows.length>1){
+      lines.push("More than one acquisition project overlaps this area — the exported image is a");
+      lines.push('mosaic and different parts may come from different flights. Ontario\'s mosaic rule');
+      lines.push('generally favours the newest/finest-resolution coverage where projects overlap.','');
+    }
+  } else {
+    lines.push(fallbackNote,'');
+  }
+  return lines.join('\n');
+}
+
+// ═══════════════════════════════════════════════════
 // AIRPHOTO EXPORT — stitch basemap tiles → GeoTIFF
 // Uses the same tiles as the airphoto basemap layer
 // ═══════════════════════════════════════════════════
@@ -8703,6 +8771,7 @@ async function exportAirphoto(){
 
   try{
     let sectionNo=0, saved=0;
+    const savedFiles=[];
     for(let sy=0;sy<nSY;sy++){
       for(let sx=0;sx<nSX;sx++){
         sectionNo++;
@@ -8710,12 +8779,25 @@ async function exportAirphoto(){
         const sy1=ymax-sy*SECTION, sy0=Math.max(ymin,sy1-SECTION);
         const label=total>1?`_S${sy+1}-${sx+1}`:'';
         if(progressCancelled()){ progressDone(`⚠ CANCELLED — ${saved} section${saved!==1?'s':''} saved`); return; }
-        const ok=await exportOneAirphotoSection(sx0,sy0,sx1,sy1,sr,zone,mpp,label,sectionNo,total);
-        if(ok) saved++;
+        const fname=await exportOneAirphotoSection(sx0,sy0,sx1,sy1,sr,zone,mpp,label,sectionNo,total);
+        if(fname){ savedFiles.push(fname); saved++; }
       }
     }
-    if(saved) progressDone(`✓ AIRPHOTO COMPLETE — ${saved}/${total} section${total>1?'s':''} @ ${mpp}m/px native`);
-    else progressDone('⚠ EXPORT FAILED — no sections saved');
+    if(saved){
+      progressDone(`✓ AIRPHOTO COMPLETE — ${saved}/${total} section${total>1?'s':''} @ ${mpp}m/px native`);
+      try{
+        const rows=await queryCoverageProjects(IMAGERY_CATALOG_URLS,xmin,ymin,xmax,ymax,sr,
+          ['Project','StartYear','EndYear','Resolution_m','HorizontalAccuracy_m']);
+        const text=buildSourceCitationText('AERIAL IMAGERY — SOURCE',savedFiles,rows,
+          r=>`${r.Project} — flown ${r.StartYear===r.EndYear?r.StartYear:r.StartYear+'–'+r.EndYear}, `+
+             `${r.Resolution_m??'?'}m/px native, ±${r.HorizontalAccuracy_m??'?'}m horizontal accuracy `+
+             `(Ontario government orthophotography program)`,
+          "No acquisition-project record found for this exact area in Ontario's public imagery catalog "+
+          '(query may have failed, or coverage may be very new/not yet indexed) — the image itself is '+
+          'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.');
+        downloadTextFile(`Airphoto_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
+      }catch(citeErr){ console.warn('Airphoto source citation failed (non-fatal):',citeErr); }
+    } else progressDone('⚠ EXPORT FAILED — no sections saved');
   }catch(err){
     console.warn('Lossless airphoto export failed, falling back to tiles:',err);
     progressHide();
@@ -8727,9 +8809,10 @@ async function exportAirphoto(){
 // One 5km (or smaller) section: chunked tile fetch → one merged native-resolution GeoTIFF.
 // Same reused-scratch-canvas trick as before (never sized to the whole section, only ever one
 // CHUNK at a time) so this isn't subject to a browser's canvas dimension/area limit.
+// Returns the saved filename on success, or null (never throws for a plain size-0 request).
 async function exportOneAirphotoSection(xmin,ymin,xmax,ymax,sr,zone,mpp,label,sectionNo,total){
   const W=Math.round((xmax-xmin)/mpp), H=Math.round((ymax-ymin)/mpp);
-  if(W<2||H<2) return false;
+  if(W<2||H<2) return null;
   const rgb=new Uint8Array(W*H*3);
   const CHUNK=2048;
   const nCX=Math.ceil(W/CHUNK), nCY=Math.ceil(H/CHUNK), nChunks=nCX*nCY;
@@ -8773,11 +8856,12 @@ async function exportOneAirphotoSection(xmin,ymin,xmax,ymax,sr,zone,mpp,label,se
   progressSet(sectionNo/total*92, total>1?`Section ${sectionNo}/${total} — writing GeoTIFF…`:'Writing GeoTIFF…');
   const buf=buildRGBGeoTIFF(rgb,W,H,mpp,mpp,xmin,ymax,sr);
   const blob=new Blob([buf],{type:'image/tiff'});
+  const fname=`Airphoto_${mpp}m_UTM${zone}N${label}_${new Date().toISOString().slice(0,10)}.tif`;
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=`Airphoto_${mpp}m_UTM${zone}N${label}_${new Date().toISOString().slice(0,10)}.tif`;
+  a.download=fname;
   a.click(); URL.revokeObjectURL(a.href);
-  return true;
+  return fname;
 }
 
 // RGB GeoTIFF in a projected CRS — same GDAL-matching structure as the DTM writer
@@ -8944,6 +9028,18 @@ async function exportAirphotoTiles(){
     setTimeout(()=>URL.revokeObjectURL(dlUrl),5000);
     const mpp=(111320*Math.cos(midLat*Math.PI/180)*pixW).toFixed(2);
     progressDone(`✓ ${fn} · ${cropW}×${cropH}px · ~${mpp}m/px`);
+    try{
+      const rows=await queryCoverageProjects(IMAGERY_CATALOG_URLS,W,S,E,N,4326,
+        ['Project','StartYear','EndYear','Resolution_m','HorizontalAccuracy_m']);
+      const text=buildSourceCitationText('AERIAL IMAGERY — SOURCE',[fn],rows,
+        r=>`${r.Project} — flown ${r.StartYear===r.EndYear?r.StartYear:r.StartYear+'–'+r.EndYear}, `+
+           `${r.Resolution_m??'?'}m/px native, ±${r.HorizontalAccuracy_m??'?'}m horizontal accuracy `+
+           `(Ontario government orthophotography program)`,
+        "No acquisition-project record found for this exact area in Ontario's public imagery catalog "+
+        '(query may have failed, or coverage may be very new/not yet indexed) — the image itself is '+
+        'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.');
+      downloadTextFile(`Airphoto_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
+    }catch(citeErr){ console.warn('Airphoto source citation failed (non-fatal):',citeErr); }
 
   }catch(err){
     progressFail('⚠ AIRPHOTO FAILED: '+err.message);
@@ -8952,6 +9048,20 @@ async function exportAirphotoTiles(){
 }
 
 const DTM_SVC='https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/Elevation/Ontario_DTM_LidarDerived/ImageServer';
+const DTM_CATALOG_FIELDS=['Project','StartYear','EndYear','Resolution_m','AcqMethod','HorizontalAccuracy_m','VerticalAccuracy'];
+const dtmCoverageRow=r=>`${r.Project} — flown ${r.StartYear===r.EndYear?r.StartYear:r.StartYear+'–'+r.EndYear}, `+
+  `${r.AcqMethod||'LiDAR'}, ${r.Resolution_m??'?'}m grid, ±${r.HorizontalAccuracy_m??'?'}m horizontal`+
+  `${r.VerticalAccuracy!=null?' / ±'+r.VerticalAccuracy+'cm vertical':''} accuracy (Government of Ontario LiDAR program)`;
+const DTM_CATALOG_FALLBACK="No acquisition-project record found for this exact area in Ontario's public LiDAR "+
+  'catalog (query may have failed, or coverage may be very new/not yet indexed) — the elevation data itself '+
+  'is still real Government of Ontario LiDAR-derived DTM, just without a confirmed flight-project name.';
+async function downloadDTMSourceCitation(fileNames,xmin,ymin,xmax,ymax,sr){
+  try{
+    const rows=await queryCoverageProjects(DTM_SVC,xmin,ymin,xmax,ymax,sr,DTM_CATALOG_FIELDS);
+    const text=buildSourceCitationText('LIDAR DTM — SOURCE',fileNames,rows,dtmCoverageRow,DTM_CATALOG_FALLBACK);
+    downloadTextFile(`DTM_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
+  }catch(citeErr){ console.warn('DTM source citation failed (non-fatal):',citeErr); }
+}
 
 // ═══════════════════════════════════════════════════
 // DTM TIFF — LOSSLESS: fetches LERC (Esri lossless float compression)
@@ -9014,11 +9124,13 @@ async function exportDTMTiff(){
     progressSet(96, total>1?`Merged ${total} sheets — writing one GeoTIFF…`:'Writing GeoTIFF…');
     const buf=buildFloat32GeoTIFF(elev,W,H,PS,PS,xmin,ymax,sr);
     const blob=new Blob([buf],{type:'image/tiff'});
+    const fname=`DTM_native0.5m_UTM${zone}N_${Date.now()}.tif`;
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
-    a.download=`DTM_native0.5m_UTM${zone}N_${Date.now()}.tif`;
+    a.download=fname;
     a.click(); URL.revokeObjectURL(a.href);
     progressDone(`✓ LOSSLESS DTM COMPLETE — ${total>1?total+' sheets merged into one file':'one file'} @ 0.5m native float32`);
+    await downloadDTMSourceCitation([fname],xmin,ymin,xmax,ymax,sr);
   }catch(err){
     console.warn('Lossless LERC path failed:',err);
     progressHide();
@@ -9179,12 +9291,14 @@ async function exportDTMTiffStretched(){
     const psx=wM/W, psy=hM/H;
     const buf=buildFloat32GeoTIFF(elev,W,H,psx,psy,xmin,ymax,sr);
     const blob=new Blob([buf],{type:'image/tiff'});
+    const fname=`DTM_${Math.round(psx*10)/10}m_UTM${zone}N_${Date.now()}.tif`;
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
-    a.download=`DTM_${Math.round(psx*10)/10}m_UTM${zone}N_${Date.now()}.tif`;
+    a.download=fname;
     a.click(); URL.revokeObjectURL(a.href);
 
     progressDone(`✓ DTM TIFF — ${W}×${H}px · ${psx.toFixed(1)}m/px · vert ±${precision.toFixed(2)}m · ${n} cells`);
+    await downloadDTMSourceCitation([fname],xmin,ymin,xmax,ymax,sr);
   }catch(err){
     progressFail('⚠ DTM TIFF FAILED: '+err.message);
     console.error('exportDTMTiff:',err);
