@@ -6188,16 +6188,35 @@ async function querySoilAnalysis(){
     const bArea=L.GeometryUtil?L.GeometryUtil.geodesicArea(bLatlngs)/10000:
       Math.abs(geoAreaHa(bLatlngs.map(ll=>[ll.lng,ll.lat])));
 
-    // For each HSG polygon: estimate clipped area using point sampling
+    // For each sample point across the BOUNDARY's own bbox, classify by whichever soil polygon
+    // (if any) contains it — not the other way around. The previous version sampled a 12x12 grid
+    // within each *polygon's* own bounding box instead, which is only accurate when a polygon is
+    // small relative to the boundary — real soil survey polygons routinely have a bbox 2-3x
+    // larger than a small drain-project boundary (confirmed directly against live data), which
+    // dilutes that polygon's computed overlap with points that only ever had a chance of landing
+    // outside the boundary in the first place. Same fix already applied to Conservation
+    // Authority/Municipal/Township/Controlled Drainage earlier this session, for the identical
+    // "feature bigger than boundary" reason — soil polygons aren't immune to it, just less
+    // extreme about it.
     const hsgTotals={};
     const soilNameTotals={};
-    const G=12; // 12x12 = 144 sample points per polygon
+    const G=24;
+    const mnx=bounds.getWest(),mxx=bounds.getEast(),mny=bounds.getSouth(),mxy=bounds.getNorth();
+    const gridPts=[];
+    for(let gi=0;gi<G;gi++) for(let gj=0;gj<G;gj++){
+      const lat=mny+(mxy-mny)*(gi+.5)/G;
+      const lng=mnx+(mxx-mnx)*(gj+.5)/G;
+      if(pointInPoly(lat,lng,bLatlngs)) gridPts.push([lat,lng]);
+    }
+    const haPerPoint=gridPts.length?bArea/gridPts.length:0;
 
-    feats.forEach(f=>{
-      const rings=f.geometry?.rings||[];
-      if(!rings.length) return;
-      const a=f.attributes||{};
+    gridPts.forEach(([lat,lng])=>{
+      const hit=feats.find(f=>(f.geometry?.rings||[]).some(ring=>ring.length>2&&pipRing(lat,lng,ring)));
+      if(!hit) return;
+      const a=hit.attributes||{};
       const hsg=hsgField?String(a[hsgField]||'?').trim():'?';
+      hsgTotals[hsg]=(hsgTotals[hsg]||0)+haPerPoint;
+
       // Combine fields: series name + expanded texture + modifier (skip OMAFRA null "~~~~~")
       const nameParts=soilNameFields.map(k=>{
         const raw=String(a[k]||'').trim();
@@ -6205,30 +6224,7 @@ async function querySoilAnalysis(){
         return k===soilGranField?expandGran(raw):raw;
       }).filter(Boolean);
       const soilName=nameParts.length?nameParts.join(' '):'Unknown';
-
-      // Polygon bbox
-      const xs=rings[0].map(v=>v[0]),ys=rings[0].map(v=>v[1]);
-      const mnx=Math.min(...xs),mxx=Math.max(...xs),mny=Math.min(...ys),mxy=Math.max(...ys);
-
-      // Sample grid: count points inside polygon AND inside boundary
-      let total=0,inBoth=0;
-      for(let gi=0;gi<G;gi++) for(let gj=0;gj<G;gj++){
-        const lat=mny+(mxy-mny)*(gi+.5)/G;
-        const lng=mnx+(mxx-mnx)*(gj+.5)/G;
-        if(pipRing(lat,lng,rings[0])){
-          total++;
-          if(pointInPoly(lat,lng,bLatlngs)) inBoth++;
-        }
-      }
-      if(!total) return;
-
-      // Approximate polygon area and clipped fraction
-      const polyAreaHa=Math.abs(geoAreaHa(rings[0]));
-      const clippedHa=polyAreaHa*(inBoth/total);
-      if(clippedHa<0.001) return;
-
-      hsgTotals[hsg]=(hsgTotals[hsg]||0)+clippedHa;
-      if(soilName&&soilName!=='Unknown') soilNameTotals[soilName]=(soilNameTotals[soilName]||0)+clippedHa;
+      if(soilName&&soilName!=='Unknown') soilNameTotals[soilName]=(soilNameTotals[soilName]||0)+haPerPoint;
     });
 
     showSoilResults(hsgTotals,soilNameTotals,bArea,hsgField,soilNameField);
