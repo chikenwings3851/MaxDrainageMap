@@ -33,7 +33,8 @@ it as a desktop app.
 crop inventory, and more, pulled live from Ontario's AgMaps/GeoHub services) plus 20 municipal storm/drainage
 layers individually verified across Southern Ontario. Every layer's info panel states its real source, links to
 both a plain-language and a technical description, and shows a live-checked last-updated date — or an honest
-note that the source doesn't publish one.
+note that the source doesn't publish one. The full breakdown, one layer at a time, is kept in
+[`docs/LAYER_SOURCES.md`](docs/LAYER_SOURCES.md).
 
 ### Built to be checked, not trusted blindly
 Every data source in this app was verified against its live REST endpoint before being wired in — never assumed
@@ -65,6 +66,7 @@ the background, and adds a native save-file dialog for exports. `npm run package
 data/MaxDrainageMap.html   — the entire app (single file, no dependencies)
 electron/                  — desktop wrapper (main.js, package.json)
 tools/dxf-viewer.html      — a standalone viewer for inspecting this app's own DXF exports
+docs/LAYER_SOURCES.md      — every layer's real data source, one at a time
 ```
 
 ## A note on data sources
