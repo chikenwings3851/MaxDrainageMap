@@ -8662,6 +8662,18 @@ const IMAGERY_CATALOG_URLS=[
   'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/AerialImagery/GEO_Imagery_Data_Service_2018to2022/ImageServer',
   'https://ws.geoservices.lrc.gov.on.ca/arcgis5/rest/services/AerialImagery/GEO_Imagery_Data_Service_2013to2017/ImageServer',
 ];
+// The exported pixels come from a DIFFERENT service (AIRPHOTO_SVC below) than the one queried
+// above for this citation — confirmed live (2026-09-09) that AIRPHOTO_SVC is a pre-built static
+// tile cache (singleFusedMapCache:true), not a live mosaic. Whoever built that cache already
+// decided, once, which flight's pixels appear wherever two real projects overlap — that choice
+// isn't exposed by any API and can't be determined after the fact, so this must never claim to
+// know which one "won."
+const IMAGERY_OVERLAP_NOTE=
+  "The exported image itself is a single pre-built Ontario government imagery cache — the choice\n"+
+  'of which overlapping flight appears at any specific point was made once, when that cache was\n'+
+  "built, not decided live at export time. There's no way to confirm from outside which flight's\n"+
+  'pixels are at any given spot; this list only confirms which real projects are known to cover\n'+
+  'the area.';
 
 // Queries one or more ImageServer mosaic catalogs for real acquisition-project
 // footprints intersecting a bbox (already in the given projected SR). where=Category=1
@@ -8697,7 +8709,11 @@ function downloadTextFile(filename,text){
 }
 
 // Builds the plain-text source citation dropped alongside an aerial/DTM export.
-function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote){
+// overlapNote is deliberately supplied per call site rather than hardcoded here — the two
+// real services this feeds (airphoto vs. DTM) resolve overlapping flights completely
+// differently (see the two constants below), and neither one is "always picks the newest" —
+// that would be a claim this code can't actually verify, so it must never assert it.
+function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote,overlapNote){
   const lines=[title,'='.repeat(title.length),'','Exported file(s): '+fileNames.join(', '),'Exported: '+new Date().toString(),''];
   if(rows.length){
     lines.push('Real acquisition coverage found for this area (Ontario government mosaic');
@@ -8705,9 +8721,9 @@ function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote){
     rows.forEach(r=>lines.push('  • '+rowFmt(r)));
     lines.push('');
     if(rows.length>1){
-      lines.push("More than one acquisition project overlaps this area — the exported image is a");
-      lines.push('mosaic and different parts may come from different flights. Ontario\'s mosaic rule');
-      lines.push('generally favours the newest/finest-resolution coverage where projects overlap.','');
+      lines.push('More than one acquisition project overlaps this area, listed newest-first above.');
+      overlapNote.split('\n').forEach(l=>lines.push(l));
+      lines.push('');
     }
   } else {
     lines.push(fallbackNote,'');
@@ -8794,7 +8810,8 @@ async function exportAirphoto(){
              `(Ontario government orthophotography program)`,
           "No acquisition-project record found for this exact area in Ontario's public imagery catalog "+
           '(query may have failed, or coverage may be very new/not yet indexed) — the image itself is '+
-          'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.');
+          'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.',
+          IMAGERY_OVERLAP_NOTE);
         downloadTextFile(`Airphoto_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
       }catch(citeErr){ console.warn('Airphoto source citation failed (non-fatal):',citeErr); }
     } else progressDone('⚠ EXPORT FAILED — no sections saved');
@@ -9037,7 +9054,8 @@ async function exportAirphotoTiles(){
            `(Ontario government orthophotography program)`,
         "No acquisition-project record found for this exact area in Ontario's public imagery catalog "+
         '(query may have failed, or coverage may be very new/not yet indexed) — the image itself is '+
-        'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.');
+        'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.',
+        IMAGERY_OVERLAP_NOTE);
       downloadTextFile(`Airphoto_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
     }catch(citeErr){ console.warn('Airphoto source citation failed (non-fatal):',citeErr); }
 
@@ -9055,10 +9073,20 @@ const dtmCoverageRow=r=>`${r.Project} — flown ${r.StartYear===r.EndYear?r.Star
 const DTM_CATALOG_FALLBACK="No acquisition-project record found for this exact area in Ontario's public LiDAR "+
   'catalog (query may have failed, or coverage may be very new/not yet indexed) — the elevation data itself '+
   'is still real Government of Ontario LiDAR-derived DTM, just without a confirmed flight-project name.';
+// Confirmed live (2026-09-09) against DTM_SVC's own service metadata: defaultMosaicMethod=Northwest,
+// mosaicOperator=First, and this app's own exportImage calls never pass an explicit mosaicRule — so
+// where two real LiDAR datasets overlap, the service picks whichever tile's centre sits closest to
+// the request's northwest corner. That's a geometry artifact, NOT "always the newest" — never claim
+// otherwise here.
+const DTM_OVERLAP_NOTE=
+  "This service's export mosaic rule is Ontario's own default (\"Northwest\"/\"First\") — for any spot\n"+
+  "covered by more than one real flight, it picks whichever tile's centre is geometrically closest to\n"+
+  "the request's northwest corner, NOT necessarily the newest one. So when two projects overlap here,\n"+
+  "don't assume the newer flight is what you actually got — it could be either.";
 async function downloadDTMSourceCitation(fileNames,xmin,ymin,xmax,ymax,sr){
   try{
     const rows=await queryCoverageProjects(DTM_SVC,xmin,ymin,xmax,ymax,sr,DTM_CATALOG_FIELDS);
-    const text=buildSourceCitationText('LIDAR DTM — SOURCE',fileNames,rows,dtmCoverageRow,DTM_CATALOG_FALLBACK);
+    const text=buildSourceCitationText('LIDAR DTM — SOURCE',fileNames,rows,dtmCoverageRow,DTM_CATALOG_FALLBACK,DTM_OVERLAP_NOTE);
     downloadTextFile(`DTM_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
   }catch(citeErr){ console.warn('DTM source citation failed (non-fatal):',citeErr); }
 }
