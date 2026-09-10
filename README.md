@@ -63,11 +63,10 @@ the background, and adds a native save-file dialog for exports. `npm run package
 ## Repository layout
 
 ```
-data/MaxDrainageMap.html         — the entire app (single file, no dependencies)
-electron/                        — desktop wrapper (main.js, package.json)
-tools/dxf-viewer.html            — a standalone viewer for inspecting this app's own DXF exports
-docs/LAYER_SOURCES.md            — every layer's real data source, one at a time
-docs/lunch-and-learn-script.md   — internal presentation script (Hughes Drain live demo)
+data/MaxDrainageMap.html   — the entire app (single file, no dependencies)
+electron/                  — desktop wrapper (main.js, package.json)
+tools/dxf-viewer.html      — a standalone viewer for inspecting this app's own DXF exports
+docs/LAYER_SOURCES.md      — every layer's real data source, one at a time
 ```
 
 ## A note on data sources
