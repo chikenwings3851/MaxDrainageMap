@@ -1711,15 +1711,6 @@ const AG_LAYERS=[
     lastUpdated:'2026-07-09',
     sourceUrl:'https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/StormInfrastructure/MapServer',
     infoUrl:'https://opendata.barrie.ca/datasets/barrie::storm-linear/about'},
-  {id:'oxford_storm', group:'muni', name:'Storm Sewer (Oxford County)', icon:'🌧️',desc:'County-wide storm sewer infrastructure — manholes, catch basins, pipe runs and culverts — covering Oxford County\'s public works asset network (Cartegraph asset-management basemap).', color:'#4488ff',layerIds:[],svcUrl:'oxford_storm',minZoom:12,opacity:1,
-    source:'County of Oxford public GIS server (PublicWorks/StormInfrastructureWM), verified 2026-07-19. No token needed. This service only allows Map (rendering) access, not attribute Query — so unlike Barrie/Centre Wellington, there\'s no way to check a real last-edited date, even live. Oxford\'s open-data hub doesn\'t carry this dataset either, so there\'s no plain-English page for it — just the raw service link below.',
-    sourceUrl:'https://public.oxfordcounty.ca/arcgis/rest/services/PublicWorks/StormInfrastructureWM/MapServer'},
-  {id:'westperth_storm', group:'muni', name:'Storm Sewer (West Perth)', icon:'🌧️',desc:'Municipality of West Perth (Mitchell area) storm sewer network — manholes, inlets/outlets, catch basins and gravity mains.', color:'#4488ff',layerIds:[0,1,2,3,4],svcUrl:'westperth_storm',minZoom:13,opacity:1,
-    source:'Perth County shared public GIS server (West_Perth/Public_Works_Storm_WP), verified 2026-07-19. No token needed. This service\'s attribute queries fail server-side, so there\'s no way to check a real last-edited date, even live. Perth County doesn\'t run a separate open-data hub, so there\'s no plain-English page for this specific dataset either — just the raw service link below.',
-    sourceUrl:'https://maps.perthcounty.ca/arcgis/rest/services/West_Perth/Public_Works_Storm_WP/MapServer'},
-  {id:'northperth_storm', group:'muni', name:'Storm Sewer (North Perth)', icon:'🌧️',desc:'Municipality of North Perth (Listowel/Atwood/Monkton area) storm sewer network — catch basins, manholes, storm mains and lateral lines.', color:'#4488ff',layerIds:[1,2,3,4],svcUrl:'northperth_storm',minZoom:13,opacity:1,
-    source:'Perth County shared public GIS server (North_Perth/StormSewer_NP, "Storm Sewer Assets for North Perth"), verified 2026-07-19. No token needed. Only one of its four sublayers has any date field at all (a per-point GPS-collection date, not a last-edited timestamp), so there\'s no single reliable last-updated signal for the layer as a whole. Perth County doesn\'t run a separate open-data hub, so there\'s no plain-English page for this specific dataset either — just the raw service link below.',
-    sourceUrl:'https://maps.perthcounty.ca/arcgis/rest/services/North_Perth/StormSewer_NP/MapServer'},
   {id:'essex_towns_storm', group:'muni', name:'Storm Sewer (Essex/Kingsville/Lakeshore)', icon:'🌧️',desc:'Storm sewer network shared across the towns of Essex, Kingsville and Lakeshore — storm mains, lines, manholes and catch basins for each, distinguished by prefix (E/K/L) in each feature\'s attributes.', color:'#4488ff',layerIds:[24,25,27,28,29,31,32,33,35,36,37],svcUrl:'essex_towns_storm',minZoom:12,opacity:1,
     source:'County of Essex public GIS server (County/MunicipalInfrastructure, "Storm" group), verified 2026-07-19. No token needed. The only date-like field present ("Date_") turned out to be pipe construction/installation year, not a last-edited date — showing it as "last updated" would be misleading, so it\'s omitted. Essex doesn\'t run a separate open-data hub, so there\'s no plain-English page for this specific dataset either — just the raw service link below.',
     sourceUrl:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/MunicipalInfrastructure/MapServer'},
@@ -2521,51 +2512,6 @@ function toggleAgLayer(id,enabled){
       layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
       layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
       layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: BARRIE STORM SEWER');});
-      layer.addTo(map);
-      agLayerInstances[id]=layer;
-      return;
-    }
-    if(id==='oxford_storm'){
-      const layer=L.esri.dynamicMapLayer({
-        url:'https://public.oxfordcounty.ca/arcgis/rest/services/PublicWorks/StormInfrastructureWM/MapServer',
-        layers:[0,1,2,3],
-        opacity:layerDef.opacity||1,
-        f:'image',format:'png32',
-        attribution:'© County of Oxford',
-      });
-      layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
-      layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
-      layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: OXFORD STORM SEWER');});
-      layer.addTo(map);
-      agLayerInstances[id]=layer;
-      return;
-    }
-    if(id==='westperth_storm'){
-      const layer=L.esri.dynamicMapLayer({
-        url:'https://maps.perthcounty.ca/arcgis/rest/services/West_Perth/Public_Works_Storm_WP/MapServer',
-        layers:layerDef.layerIds,
-        opacity:layerDef.opacity||1,
-        f:'image',format:'png32',
-        attribution:'© Municipality of West Perth',
-      });
-      layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
-      layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
-      layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: WEST PERTH STORM SEWER');});
-      layer.addTo(map);
-      agLayerInstances[id]=layer;
-      return;
-    }
-    if(id==='northperth_storm'){
-      const layer=L.esri.dynamicMapLayer({
-        url:'https://maps.perthcounty.ca/arcgis/rest/services/North_Perth/StormSewer_NP/MapServer',
-        layers:layerDef.layerIds,
-        opacity:layerDef.opacity||1,
-        f:'image',format:'png32',
-        attribution:'© Municipality of North Perth',
-      });
-      layer.on('requestend',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status on';statusEl.textContent='ON';}});
-      layer.on('requeststart',()=>{if(agLayerState[id].enabled){statusEl.className='ag-layer-status loading';statusEl.textContent='LOAD';}});
-      layer.on('requesterror',()=>{statusEl.className='ag-layer-status err';statusEl.textContent='ERR';showToast('LAYER ERROR: NORTH PERTH STORM SEWER');});
       layer.addTo(map);
       agLayerInstances[id]=layer;
       return;
@@ -8229,9 +8175,6 @@ const DXF_EXPORTABLE={
     'County Storm Sewer':'#267300','Private Storm Sewer':'#267300','Retention Pond':'#4065EB','Management Area':'#730000',
   }}]},
   barrie_storm:{dxfLayer:'STORM-BARRIE', color:'#4488ff', sources:[{mapServer:'https://gispublic.barrie.ca/arcgis/rest/services/Open_Data/StormInfrastructure/MapServer', ids:[0,1,2,3,5], colorByIds:{0:'#860007',1:'#00A674',2:'#BFF5E9',3:'#C9F7D3',5:'#E3C0FA'}}]},
-  oxford_storm:{dxfLayer:'STORM-OXFORD', color:'#4488ff', sources:[{mapServer:'https://public.oxfordcounty.ca/arcgis/rest/services/PublicWorks/StormInfrastructureWM/MapServer', ids:[0,1,2,3], colorByIds:{0:'#38A800',1:'#A87000',2:'#333333',3:'#805500'}}]},
-  westperth_storm:{dxfLayer:'STORM-WESTPERTH', color:'#4488ff', sources:[{mapServer:'https://maps.perthcounty.ca/arcgis/rest/services/West_Perth/Public_Works_Storm_WP/MapServer', ids:[0,1,2,3,4], colorByIds:{0:'#4488ff',1:'#ffd600',2:'#ff6b35',3:'#00e5ff',4:'#4488ff'}}]}, // legend endpoint truncates on this server (server bug) — app's own storm convention used instead
-  northperth_storm:{dxfLayer:'STORM-NORTHPERTH', color:'#ff0000', sources:[{mapServer:'https://maps.perthcounty.ca/arcgis/rest/services/North_Perth/StormSewer_NP/MapServer', ids:[1,2,3,4], colorByIds:{1:'#FF0000',2:'#E60000',3:'#FF0000',4:'#740000'}}]},
   essex_towns_storm:{dxfLayer:'STORM-ESSEXTOWNS', color:'#38A800', sources:[{mapServer:'https://gisservices.countyofessex.ca/arcgis/rest/services/County/MunicipalInfrastructure/MapServer', ids:[24,25,27,28,29,31,32,33,35,36,37], colorByIds:{24:'#00734C',25:'#38A800',27:'#55FF00',28:'#55FF00',29:'#55FF00',31:'#00FF00',32:'#38A800',33:'#DDDDDD',35:'#00FF00',36:'#38A800',37:'#333333'}}]},
   kitchener_storm:{dxfLayer:'STORM-KITCHENER', color:'#4488ff', sources:[
     {url:'https://services1.arcgis.com/qAo1OsXi67t7XgmS/arcgis/rest/services/Storm_Pipes/FeatureServer/0', color:'#4488ff'},

@@ -29,8 +29,8 @@ it as a desktop app.
   and a **soil/land-use breakdown** — all boundary-scoped, all exportable.
 
 ### A live, sourced layer library
-41 toggleable layers: 21 province-wide (soil, wetlands, drains, dams, tile drainage, conservation authorities,
-crop inventory, and more, pulled live from Ontario's AgMaps/GeoHub services) plus 20 municipal storm/drainage
+38 toggleable layers: 21 province-wide (soil, wetlands, drains, dams, tile drainage, conservation authorities,
+crop inventory, and more, pulled live from Ontario's AgMaps/GeoHub services) plus 17 municipal storm/drainage
 layers individually verified across Southern Ontario. Every layer's info panel states its real source, links to
 both a plain-language and a technical description, and shows a live-checked last-updated date — or an honest
 note that the source doesn't publish one. The full breakdown, one layer at a time, is kept in

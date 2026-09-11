@@ -4,10 +4,14 @@ Where every layer in this app actually comes from — pulled directly from the a
 (the same text shown under each layer's own info card in `data/MaxDrainageMap.html`), so this document and
 the app itself never drift apart.
 
-**41 toggleable layers, plus the aerial photo basemap itself** (a separate thing in the program — a
+**38 toggleable layers, plus the aerial photo basemap itself** (a separate thing in the program — a
 background image, not a toggle in the layer list, so it's called out on its own below rather than folded
-into the "41"). No layer requires anything other than a free AgMaps/LIO session token, and only 2 of the 41
+into the "38"). No layer requires anything other than a free AgMaps/LIO session token, and only 2 of the 38
 toggleable layers need even that — everything else, plus the aerial basemap, is open data with no login.
+
+*(Storm Sewer (Oxford County), Storm Sewer (West Perth), and Storm Sewer (North Perth) were removed
+2026-09-10 after a licensing review found both counties' actual data licences bar commercial use/
+redistribution without written permission — see the project's working notes for the full review.)*
 
 > **Maintenance note:** update this file in the same commit as any change to `AG_LAYERS` in
 > `data/MaxDrainageMap.html` — a new layer, a re-sourced field, a corrected last-updated date, etc. See the
@@ -197,7 +201,7 @@ than relying on this one catalog-level date, and honestly notes that the export 
 
 ---
 
-## County & Municipal Layers (one-off, local-server data — 20 layers)
+## County & Municipal Layers (one-off, local-server data — 17 layers)
 
 These don't come through LIO at all — each is that specific county/city's own public GIS server, checked
 and verified individually. Grouped by area:
@@ -213,15 +217,8 @@ and verified individually. Grouped by area:
 - 💧 **Drains (Essex County)** — County's own server, real `DRAIN_NAME` field. *No date field exists on this service at all* — checked, confirmed absent.
 - 🌧️ **Storm Sewer (Essex/Kingsville/Lakeshore)** — Same county server, shared across all 3 towns. The only date-like field found was pipe installation year, not a last-edited date — **deliberately not shown as "last updated" since that would be misleading**.
 
-**Perth County**
-- 🌧️ **Storm Sewer (West Perth)** — Perth County's shared server. Attribute queries fail server-side on this one — no way to check a real date, even live.
-- 🌧️ **Storm Sewer (North Perth)** — Same server. Only 1 of 4 sublayers has any date field, and it's a per-point GPS-collection date, not a service-wide edit date — not reliable enough to badge the whole layer.
-
 **Barrie**
 - 🌧️ **Storm Sewer (Barrie)** — City's own Open Data server. Last real edit: 2026-07-09. [Dataset page](https://opendata.barrie.ca/datasets/barrie::storm-linear/about)
-
-**Oxford County**
-- 🌧️ **Storm Sewer (Oxford County)** — County-wide Cartegraph asset basemap. Map-only service (no attribute Query capability) — genuinely no way to check a live date.
 
 **Waterloo Region**
 - 🌧️ **Storm Sewer (Kitchener)** — City's Open Data (several hosted datasets combined into one toggle). Last real edit: 2026-06-23.
@@ -252,7 +249,7 @@ and verified individually. Grouped by area:
 
 ---
 
-## The honest pattern across all 41
+## The honest pattern across all 38
 
 - **Every layer's real source, and whether a last-updated date could even be found, was individually
   checked** — not assumed. Where a service genuinely has no date signal (checked both the easy way and the
