@@ -1769,6 +1769,127 @@ const AG_LAYERS=[
     infoUrl:'https://opendatakingston.cityofkingston.ca/datasets/cityofkingston::storm-pipe'},
 ];
 
+// ═══════════════════════════════════════════════════
+// LAYER LICENSING — the real licence/terms-of-use behind every data source, established via a
+// full copyright/licensing review (2026-09-10, findings kept in
+// C:\Users\Max\Downloads\MaxDrainageMap-copyright-licensing-review.md). Attached to every export
+// (DXF/Excel/CSV/aerial/DTM) covering the layers actually included, via
+// buildLicenseDisclaimerText() below, so a deliverable never leaves this app without the real
+// licence info for the data inside it.
+// ═══════════════════════════════════════════════════
+const OGL_ONTARIO='Open Government Licence – Ontario v1.0 — free for commercial use, modification, and redistribution in any format. Attribution: "Contains information licensed under the Open Government Licence – Ontario."';
+const OGL_CANADA='Open Government Licence – Canada v2.0 — free for commercial use, modification, and redistribution in any format. Attribution: "Contains information licensed under the Open Government Licence – Canada."';
+const OGL_SIMCOE='Open Government Licence – Simcoe County v1.0 — free for commercial use, modification, and redistribution. Attribution: "Contains information licensed under the Open Government Licence – Simcoe County."';
+const OGL_WATERLOO_REGION='Open Data Licence — Regional Municipality of Waterloo v1.0 — free for commercial use, modification, and redistribution; attribution optional.';
+const OGL_KINGSTON='City of Kingston Open Data Licence 1.0 (based on OGL-Ontario) — free for commercial use, modification, and redistribution. Attribution: "Contains information licensed under the Open Data Licence – City of Kingston."';
+
+// Keyed by AG_LAYERS id. Every entry not listed here (should not happen — checked against
+// AG_LAYERS at review time) falls back to a generic "verify before relying on this" note.
+const LAYER_LICENSES={
+  // ── Province-wide, OGL-Ontario, clean ──
+  lots:OGL_ONTARIO, drains:OGL_ONTARIO, tile_drain:OGL_ONTARIO, townships:OGL_ONTARIO,
+  municipal:OGL_ONTARIO, psw:OGL_ONTARIO, soil_cap:OGL_ONTARIO, soil_drain:OGL_ONTARIO,
+  hsg:OGL_ONTARIO, soil_erodibility:OGL_ONTARIO, dfo_drain:OGL_ONTARIO, dam_inventory:OGL_ONTARIO,
+  monitoring_stations:OGL_ONTARIO, dtm_lidar:OGL_ONTARIO, olc_v1:OGL_ONTARIO,
+  aafc_crop:OGL_CANADA,
+  // Not an AG_LAYERS id — the aerial photo basemap/export. OGL-Ontario applies, but Ontario's own
+  // documentation says this is collection-conditional ("only applies... where Ontario owns the
+  // intellectual property rights") since some 2013-2023 flights were cost-shared with private/
+  // municipal partners. Check the specific export's own SOURCES.txt (built by
+  // downloadDTMSourceCitation/the airphoto citation code) for the real flight name, then compare
+  // against Ontario's confirmed-released list before relying on an export.
+  aerial_basemap:OGL_ONTARIO+' Conditional: Ontario\'s own documentation states this only applies to orthophotography collections where Ontario owns the intellectual property rights — some historical (2013-2023) flights were cost-shared with private/municipal partners. Check this export\'s own SOURCES.txt for the real acquisition project name.',
+
+  conservation:OGL_ONTARIO+' Note: Ontario\'s bulk-download page for this dataset requires registering name/organization/email — this app pulls it via the same open REST service, not that gated route.',
+  drainage_supt:OGL_ONTARIO+' Contains named individuals\' contact info (municipally-appointed drainage superintendents) — a privacy consideration separate from copyright; avoid aggregating/republishing this list beyond a "who to call for this drain" lookup.',
+
+  // ── CRITICAL — see the full 2026-09-10 review before relying on these for client deliverables ──
+  asr_parcels:'⚠ MPAC/Teranet commercially licensed data, restricted to non-commercial personal use under AgMaps\' own clickwrap licence — NOT an open licence. Ontario\'s own documentation states for-profit entities should obtain this data from MPAC/Teranet directly. Exporting/redistributing this data increases the exposure described in the 2026-09-10 licensing review — get a lawyer\'s sign-off before relying on this for client deliverables.',
+  roll_labels:'⚠ Same MPAC/Teranet licensing as Assessment Parcels — see that entry.',
+  controlled:'The underlying data is ordinary Ontario government drainage information, but it\'s reached via the same AgMaps-token mechanism flagged for the parcel layers above — the same procedural (breach-of-contract) risk applies to how this is fetched, independent of the data\'s own content.',
+  // Not an AG_LAYERS id — the Soil HSG Analysis tool (querySoilAnalysis, feeding Quick Report,
+  // Export by Property, Land Use Areas/SWMHYMO, and the Soil DXF export) queries the token-gated
+  // AIA_URL+'/27' service, NOT the open SOIL_SURVEY_URL mirror the live "hsg"/"soil_cap" map
+  // layers use — same procedural AgMaps-token risk as asr_parcels/controlled above, discovered
+  // while building this feature (not caught by the original 2026-09-10 review, which only looked
+  // at AG_LAYERS' own toggleable-layer sources).
+  soil_hsg_analysis:'Reached via the same token-gated AIA service flagged for Assessment Parcels/Controlled Drainage above (AIA_URL/27), not the open soil-survey mirror the live "Hydrologic Soil Group" map layer uses — the underlying soil-survey content is presumably the same open data, but this specific tool (Soil HSG Analysis, Land Use Areas, Export by Property\'s soil columns, this DXF) reaches it via the same procedurally-risky mechanism as the parcel/controlled-drainage items.',
+  // Not an AG_LAYERS id — Query Drains (queryDrainsInBoundary, drain name search) queries the
+  // same token-gated AIA_URL+'/20' sublayer, not the open Constructed Drain service the live
+  // "Municipal Drains"/"DFO Drain Classification" map layers were migrated to. No current export
+  // function includes drains data in a downloadable file (only shown on-screen / Quick Report's
+  // copy-text), so this key isn't wired into downloadLicenseDisclaimer anywhere yet — kept here so
+  // it's correct if that ever changes.
+  drains_query_tool:'Reached via the same token-gated AIA service flagged for Assessment Parcels/Controlled Drainage above (AIA_URL/20), not the open Constructed Drain service the live "Municipal Drains" map layer was migrated to — same procedural risk as the parcel/soil-analysis items.',
+
+  // ── Municipal/county ──
+  oromedonte_parcels:OGL_SIMCOE,
+  essex_drains:'Likely an Open Government Licence (County of Essex publishes a document under that title) — exact clause text could not be confirmed from a live page as of the 2026-09-10 review.',
+  essex_towns_storm:'Likely an Open Government Licence (County of Essex) — see the Essex Drains entry; exact clause text unconfirmed.',
+  cw_storm:'No documented licence or terms of use found for this data source at all (checked 2026-09-10) — Centre Wellington\'s GIS server carries no disclaimer or licence of any kind.',
+  cw_airphoto:'No documented licence or terms of use found for this data source at all (checked 2026-09-10).',
+  barrie_storm:'Carries only a copyright/disclaimer notice ("© Copyright City of Barrie") — no affirmative open-licence grant, no attribution mechanism, no explicit commercial-use statement.',
+  kitchener_storm:OGL_WATERLOO_REGION,
+  waterloo_storm:OGL_WATERLOO_REGION,
+  guelph_swm:'Open Government Licence – City of Guelph (based on OGL-Canada v2.0) — free for commercial use, modification, and redistribution. Attribution: "Contains information provided by the City of Guelph under an open government license."',
+  oakville_storm:'Open Government Licence — Town of Oakville (based on OGL-Canada v2.0) — free for commercial use, modification, and redistribution. Attribution: "Contains information licensed under the Open Government Licence — Town of Oakville."',
+  burlington_storm:'Terms of Use for Open Data Burlington (2011) — broad commercial-use/redistribution grant, but revocable by the City at its sole discretion at any time (not a perpetual OGL-style grant).',
+  mississauga_storm:'City of Mississauga Terms of Use — broad commercial-use/redistribution grant, but revocable by the City at its sole discretion at any time.',
+  brampton_storm:'Creative Commons Attribution 4.0 International (CC BY 4.0) on most of Brampton\'s datasets — could not independently confirm this specific layer carries that licence tag rather than a blank one (2026-09-10 review). If CC BY 4.0 applies: commercial use/redistribution permitted subject to attribution.',
+  durham_storm:'Open Data Licence — Regional Municipality of Durham v1.0 (likely) — some datasets on this portal carry a blank licence field; the storm sewer layer\'s own tag was not individually confirmed (2026-09-10 review).',
+  hamilton_storm:'Open Data Licence Terms and Conditions (City of Hamilton) — broad commercial-use/redistribution grant per secondary sources; primary licence text could not be directly confirmed (2026-09-10 review).',
+  ptbo_storm:'Genuinely uncertain — a terms-of-use gate exists on Peterborough\'s open-data portal, but its substance could not be confirmed from primary text (2026-09-10 review).',
+  kingston_storm:OGL_KINGSTON,
+};
+const LAYER_LICENSE_FALLBACK='No licence information on record for this source — verify before relying on this for a client deliverable.';
+// Display names for the virtual (non-AG_LAYERS) keys above, so a disclaimer handed to a colleague
+// or client never shows a raw internal id.
+const VIRTUAL_SOURCE_NAMES={
+  aerial_basemap:'Aerial Imagery (Ontario orthophoto basemap)',
+  soil_hsg_analysis:'Soil HSG Analysis (AgMaps soil service)',
+  drains_query_tool:'Query Drains (AgMaps drain service)',
+};
+
+// Culvert sources (CULVERT_SOURCES below) reuse the same underlying storm-sewer services above.
+const CULVERT_LICENSES={
+  Barrie:LAYER_LICENSES.barrie_storm,
+  Waterloo:OGL_WATERLOO_REGION,
+  'Durham Region':LAYER_LICENSES.durham_storm,
+  Burlington:LAYER_LICENSES.burlington_storm,
+  Kitchener:OGL_WATERLOO_REGION,
+};
+
+// Builds the plain-text licence disclaimer dropped alongside an export. `ids` is an array of
+// AG_LAYERS ids (or CULVERT_SOURCES labels, if `fromCulverts` is true) actually included in that
+// specific export — never the whole app's layer list, so the disclaimer only names what's really
+// in the file.
+function buildLicenseDisclaimerText(title,fileNames,ids,fromCulverts){
+  const lookup=id=>fromCulverts?(CULVERT_LICENSES[id]||LAYER_LICENSE_FALLBACK):(LAYER_LICENSES[id]||LAYER_LICENSE_FALLBACK);
+  const nameOf=id=>{
+    if(fromCulverts) return id;
+    const l=AG_LAYERS.find(x=>x.id===id);
+    return l?l.name:(VIRTUAL_SOURCE_NAMES[id]||id);
+  };
+  const seen=new Set();
+  const lines=[title,'='.repeat(title.length),'','Exported file(s): '+fileNames.join(', '),
+    'Exported: '+new Date().toString(),'',
+    'Data licence/terms for each source included in this export:',''];
+  ids.forEach(id=>{
+    if(seen.has(id))return; seen.add(id);
+    lines.push('• '+nameOf(id)+':');
+    lines.push('  '+lookup(id));
+    lines.push('');
+  });
+  lines.push('This list only covers sources actually included in this export — see');
+  lines.push('docs/LAYER_SOURCES.md (or ask Claude) for every other layer\'s licence.');
+  return lines.join('\n');
+}
+function downloadLicenseDisclaimer(kind,fileNames,ids,fromCulverts){
+  if(!ids||!ids.length)return;
+  const text=buildLicenseDisclaimerText(kind.toUpperCase()+' EXPORT — DATA LICENCE DISCLAIMER',fileNames,ids,fromCulverts);
+  downloadTextFile(kind.replace(/\s+/g,'')+'_LICENSES_'+new Date().toISOString().slice(0,10)+'.txt',text);
+}
+
 const agLayerInstances={};
 const agLayerState={};
 AG_LAYERS.forEach(l=>{agLayerState[l.id]={enabled:false,opacity:l.opacity};});
@@ -5672,10 +5793,14 @@ ${dataRows}
 
   const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url=URL.createObjectURL(blob);
+  const fname='Property_Breakdown_'+new Date().toISOString().slice(0,10)+'.xls';
   const a=document.createElement('a');
-  a.href=url; a.download='Property_Breakdown_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.href=url; a.download=fname;
   document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
+  downloadLicenseDisclaimer('Property breakdown',[fname],
+    ['asr_parcels','municipal','townships','conservation','lots','soil_hsg_analysis',
+     'soil_cap','soil_drain','soil_erodibility','psw','tile_drain','controlled','dfo_drain']);
 }
 
 async function queryDrainsInBoundary(){
@@ -6020,11 +6145,14 @@ ${dataRows}
 
   const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url=URL.createObjectURL(blob);
+  const fname='Culverts_'+new Date().toISOString().slice(0,10)+'.xls';
   const a=document.createElement('a');
-  a.href=url; a.download='Culverts_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.href=url; a.download=fname;
   document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
   showToast('✓ EXPORTED '+rows.length+' CULVERTS');
+  const munis=[...new Set(rows.map(r=>r.municipality))];
+  downloadLicenseDisclaimer('Culverts',[fname],munis,true);
 }
 
 // ── SOIL HSG ANALYSIS ──────────────────────────────────────────────────
@@ -6863,9 +6991,11 @@ function showSWMHYMOTable(table,boundaryHa,luAreas,source,palette){
 function exportSWMHYMOcsv(){
   const csv=window._swmhymoCsv||'';
   const a=document.createElement('a');
+  const fname='LandUseAreas.csv';
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(Array.isArray(csv)?csv.join('\n'):csv);
-  a.download='LandUseAreas.csv';
+  a.download=fname;
   a.click();
+  downloadLicenseDisclaimer('Land use areas',[fname],['olc_v1','soil_hsg_analysis']);
 }
 
 function buildGeoTIFF(rgb,W,H,pixW,pixH,ulLon,ulLat){
@@ -7078,12 +7208,14 @@ function exportValidationDXF(){
   const dxf=out.join('\n');
   const blob=new Blob([dxf],{type:'application/dxf'});
   const url=URL.createObjectURL(blob);
+  const fname='NASHYD_Validation_'+new Date().toISOString().slice(0,10)+'.dxf';
   const a=document.createElement('a');
   a.href=url;
-  a.download='NASHYD_Validation_'+new Date().toISOString().slice(0,10)+'.dxf';
+  a.download=fname;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
   showToast(`✓ VALIDATION DXF — ${polyCount} MERGED POLYGONS`);
+  downloadLicenseDisclaimer('Land use validation DXF',[fname],['olc_v1','soil_hsg_analysis']);
 }
 
 const HSG_COLORS={
@@ -7246,12 +7378,14 @@ function exportSoilDXF(){
   const dxf=out.join('\n');
   const blob=new Blob([dxf],{type:'application/dxf'});
   const url=URL.createObjectURL(blob);
+  const fname='Soil_HSG_'+new Date().toISOString().slice(0,10)+'.dxf';
   const a=document.createElement('a');
   a.href=url;
-  a.download='Soil_HSG_'+new Date().toISOString().slice(0,10)+'.dxf';
+  a.download=fname;
   document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
   showToast('✓ SOIL DXF — '+polyCount+' POLYGONS EXPORTED');
+  downloadLicenseDisclaimer('Soil DXF',[fname],['soil_hsg_analysis']);
 }
 
 const SEARCH_PLACEHOLDERS={
@@ -7922,11 +8056,13 @@ ${dataRows}
 
   const blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
   const url=URL.createObjectURL(blob);
+  const fname='Parcels_'+new Date().toISOString().slice(0,10)+'.xls';
   const a=document.createElement('a');
-  a.href=url; a.download='Parcels_'+new Date().toISOString().slice(0,10)+'.xls';
+  a.href=url; a.download=fname;
   document.body.appendChild(a); a.click();
   setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
   showToast('✓ EXPORTED '+parcelData.length+' PARCELS');
+  downloadLicenseDisclaimer('Parcel list',[fname],['asr_parcels']);
 }
 
 // ═══════════════════════════════════════════════════
@@ -8442,14 +8578,16 @@ async function exportDXF(){
     const dxf=buildDXF(parcels,boundaryVerts,extraLayers);
     const blob=new Blob([dxf],{type:'application/dxf'});
     const url=URL.createObjectURL(blob);
+    const fname='Parcels_UTM'+(Math.floor((map.getCenter().lng+180)/6)+1)+'N_'+new Date().toISOString().slice(0,10)+'.dxf';
     const a=document.createElement('a');
-    a.href=url;const zoneNum=Math.floor((map.getCenter().lng+180)/6)+1;
-    a.download='Parcels_UTM'+zoneNum+'N_'+new Date().toISOString().slice(0,10)+'.dxf';
+    a.href=url;
+    a.download=fname;
     document.body.appendChild(a);a.click();
     setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1000);
     const extras=extraLayers.map(l=>l.dxfLayer+'('+l.count+')').join(', ');
     progressDone('✓ DXF — '+parcels.length+' PARCELS'+(extras?' + '+extras:'')+
       (skippedTok.length?' · skipped: '+skippedTok.join(', '):''));
+    downloadLicenseDisclaimer('DXF',[fname],['asr_parcels',...onIds]);
   }catch(err){progressFail('⚠ '+err.message);}
   finally{btn.textContent='📐 DXF';}
 }
@@ -8656,7 +8794,7 @@ function downloadTextFile(filename,text){
 // real services this feeds (airphoto vs. DTM) resolve overlapping flights completely
 // differently (see the two constants below), and neither one is "always picks the newest" —
 // that would be a claim this code can't actually verify, so it must never assert it.
-function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote,overlapNote){
+function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote,overlapNote,licenseKey){
   const lines=[title,'='.repeat(title.length),'','Exported file(s): '+fileNames.join(', '),'Exported: '+new Date().toString(),''];
   if(rows.length){
     lines.push('Real acquisition coverage found for this area (Ontario government mosaic');
@@ -8670,6 +8808,11 @@ function buildSourceCitationText(title,fileNames,rows,rowFmt,fallbackNote,overla
     }
   } else {
     lines.push(fallbackNote,'');
+  }
+  if(licenseKey){
+    lines.push('Data licence/terms:','');
+    lines.push('  '+(LAYER_LICENSES[licenseKey]||LAYER_LICENSE_FALLBACK));
+    lines.push('');
   }
   return lines.join('\n');
 }
@@ -8754,7 +8897,7 @@ async function exportAirphoto(){
           "No acquisition-project record found for this exact area in Ontario's public imagery catalog "+
           '(query may have failed, or coverage may be very new/not yet indexed) — the image itself is '+
           'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.',
-          IMAGERY_OVERLAP_NOTE);
+          IMAGERY_OVERLAP_NOTE,'aerial_basemap');
         downloadTextFile(`Airphoto_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
       }catch(citeErr){ console.warn('Airphoto source citation failed (non-fatal):',citeErr); }
     } else progressDone('⚠ EXPORT FAILED — no sections saved');
@@ -8998,7 +9141,7 @@ async function exportAirphotoTiles(){
         "No acquisition-project record found for this exact area in Ontario's public imagery catalog "+
         '(query may have failed, or coverage may be very new/not yet indexed) — the image itself is '+
         'still real Ontario government imagery (© LIO), just without a confirmed flight-project name.',
-        IMAGERY_OVERLAP_NOTE);
+        IMAGERY_OVERLAP_NOTE,'aerial_basemap');
       downloadTextFile(`Airphoto_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
     }catch(citeErr){ console.warn('Airphoto source citation failed (non-fatal):',citeErr); }
 
@@ -9029,7 +9172,7 @@ const DTM_OVERLAP_NOTE=
 async function downloadDTMSourceCitation(fileNames,xmin,ymin,xmax,ymax,sr){
   try{
     const rows=await queryCoverageProjects(DTM_SVC,xmin,ymin,xmax,ymax,sr,DTM_CATALOG_FIELDS);
-    const text=buildSourceCitationText('LIDAR DTM — SOURCE',fileNames,rows,dtmCoverageRow,DTM_CATALOG_FALLBACK,DTM_OVERLAP_NOTE);
+    const text=buildSourceCitationText('LIDAR DTM — SOURCE',fileNames,rows,dtmCoverageRow,DTM_CATALOG_FALLBACK,DTM_OVERLAP_NOTE,'dtm_lidar');
     downloadTextFile(`DTM_SOURCES_${new Date().toISOString().slice(0,10)}.txt`,text);
   }catch(citeErr){ console.warn('DTM source citation failed (non-fatal):',citeErr); }
 }
@@ -9537,11 +9680,13 @@ async function exportContourDXF(){
     const a=document.createElement('a');
     a.href=URL.createObjectURL(blob);
     const zone=wgs84ToUTM17N((N+S)/2,(W+E)/2)[2];
-    a.download=`DTM_SurfacePts_${spacingM}m_UTM${zone}N_${Date.now()}.dxf`;
+    const fname=`DTM_SurfacePts_${spacingM}m_UTM${zone}N_${Date.now()}.dxf`;
+    a.download=fname;
     a.click();
     URL.revokeObjectURL(a.href);
 
     showToast(`✓ ${ptCount} surface points · ${spacingM}m grid · UTM ${zone}N`);
+    downloadLicenseDisclaimer('Contour surface DXF',[fname],['dtm_lidar']);
   }catch(err){
     showToast('⚠ SURFACE EXPORT FAILED: '+err.message);
     console.error('exportContourDXF:',err);
